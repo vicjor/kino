@@ -6,6 +6,10 @@ on:
   push:
     tags: ['v*']
 
+# Creating the release and uploading its files needs write access to the repo's contents.
+permissions:
+  contents: write
+
 jobs:
   desktop:
     strategy:

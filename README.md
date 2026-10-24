@@ -88,7 +88,7 @@ Kino runs on one machine at home and every other device opens it in a browser. P
 
 ### Desktop app (macOS, Linux)
 
-Builds are attached to each tagged version on the [Releases page](https://github.com/vicjor/kino/releases): a DMG for Apple Silicon, a DMG for Intel Macs, and an AppImage for Linux. Until the first version is tagged, install from source below.
+Builds are attached to each tagged version on the [Releases page](https://github.com/vicjor/kino/releases): a DMG for Apple Silicon, a DMG for Intel Macs, and an AppImage for Linux. Until the first version is tagged, install from source below, or build the app yourself (see [Building the desktop app](#building-the-desktop-app)).
 
 1. Open the DMG and drag Kino to Applications.
 2. The app is not signed with an Apple Developer ID, so the first open is refused. Open **System Settings, Privacy & Security**, scroll to the message about Kino and choose **Open Anyway**. Or, in a terminal: `xattr -dr com.apple.quarantine /Applications/Kino.app`.
@@ -106,6 +106,8 @@ cd kino
 mise install            # Node 26 and bun
 ./scripts/install.sh    # dependencies, build, a launchd agent with your paths, opens Kino
 ```
+
+This runs Kino as a background service that starts at login; you open it in a browser, and there is no app window. For the window and menu bar icon, use the desktop app.
 
 ffmpeg and ffprobe come in as npm packages at install time. At boot Kino checks that each one actually runs and otherwise uses Homebrew's (`/opt/homebrew/bin`, `/usr/local/bin`), MacPorts' (`/opt/local/bin`) or the one on `PATH`. The ffprobe package's Apple Silicon binary is an Intel build, so a Mac without Rosetta needs `brew install ffmpeg`.
 
@@ -129,9 +131,24 @@ Open `http://kino.local` (macOS, through Bonjour; port 80 redirects to 1234) or 
 
 Kino comes with the Cinemeta catalog (titles, posters, episodes) and OpenSubtitles (subtitles). It has no stream addon: to play titles from the catalog, paste the manifest URL of an addon you use in **Settings, Sources**. Magnet links work without any addon.
 
-### Away from home
+### Away from home with Tailscale
 
-Kino has no accounts and trusts its network. To reach it from outside, put it behind a VPN such as [Tailscale](https://tailscale.com) (`tailscale serve` works; names under `.ts.net` are accepted) and set `KINO_PIN` so the library asks for a PIN. Do not expose it to the internet.
+Kino has no accounts and trusts its network, so never expose it to the internet. To use it from outside the house, put it on your own [Tailscale](https://tailscale.com) network (free for personal use):
+
+1. Install Tailscale on the machine that runs Kino and on your phones and laptops, signed in to the same account.
+2. On the Kino machine, run `tailscale serve --bg 1234`. Kino is now at `https://<machine>.<tailnet>.ts.net`, for your devices only; the first time, Tailscale asks you to turn on HTTPS for your tailnet. `tailscale serve status` shows the address, `tailscale serve reset` turns it off. Do not use `tailscale funnel`: that puts it on the public internet.
+3. Set a PIN, so a shared or lost device does not open your library. For the launchd install:
+   ```sh
+   plutil -replace EnvironmentVariables.KINO_PIN -string 'your-pin' ~/Library/LaunchAgents/com.kino.plist
+   sh scripts/restart.sh http://localhost:1234 reload
+   ```
+   Running `scripts/install.sh` or `make install-local` again writes a fresh plist, so add it again after those. On Linux, add `KINO_PIN=your-pin` to `Environment=` in the systemd unit.
+
+Tips:
+- Add the `ts.net` address to your phone's home screen as well: it is HTTPS, so the installable app works there too.
+- From away you can still start and control casts to the TVs at home. The TV fetches the video from Kino over the home network, not through your phone.
+- Watching away from home streams over your home upload. If a file stutters, pick a smaller source (Auto already prefers lean ones).
+- Kino answers to `.ts.net` names out of the box. Any other name in front of it (your own domain, a router DNS name) goes in `KINO_HOSTS`.
 
 ## How it works
 
@@ -286,7 +303,7 @@ If Kino already runs on :1234 (launchd, the desktop app), `bun run dev` refuses 
 
 ### Building the desktop app
 
-`bun run desktop` runs the Electron app, `bun run desktop:dist` builds a DMG into `release/`. Both build `dist/`, which a running Kino serves from, so they refuse in a checkout that serves Kino unless `DEPLOY=1` is set, or run them in a separate `git worktree`. Run from a worktree, `bun run desktop` puts its server on :1299 with a throwaway data folder (`PORT` and `KINO_DATA` override), and dev and worktree windows get their own Electron app folder, so they run next to an installed Kino.app.
+`bun run desktop` runs the Electron app, `bun run desktop:dist` builds a DMG into `release/`. Both rebuild `dist/`, which a launchd Kino serves from, so in a main checkout they refuse unless `DEPLOY=1` is set; in a separate `git worktree` they just run. To make the app from a fresh clone: `bun install`, then `DEPLOY=1 bun run desktop:dist`, then open the DMG for your Mac in `release/`. Run from a worktree, `bun run desktop` puts its server on :1299 with a throwaway data folder (`PORT` and `KINO_DATA` override), and dev and worktree windows get their own Electron app folder, so they run next to an installed Kino.app.
 
 Each DMG ships a native ffmpeg and ffprobe for its CPU: `scripts/ffmpeg-arch.sh` fetches jellyfin-ffmpeg's portable GPL build, pinned by version and checksum, and puts its licence and source link next to the binaries. `desktop:dist` builds one CPU at a time and packs `node_modules` as it is (every native module is Node-API), so run `bun install` in that checkout first, not a `node_modules` symlinked from another.
 
