@@ -1,0 +1,135 @@
+/*
+ * Primary nav (Dock.tsx). Phones: an iOS 26 tab bar, a glass capsule of four places with Search and the TVs as glass
+ * circles beside it, that shrinks to the current tab while you scroll down. Wide screens: no sidebar; the same pieces
+ * float in a bar across the top, so the content gets the whole window.
+ */
+.dock {
+  position: fixed; z-index: 45; left: 0; right: 0; bottom: calc(var(--sab) + 12px); display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 calc(10px + var(--sar)) 0 calc(10px + var(--sal)); pointer-events: none;
+}
+.dock > * { pointer-events: auto; }
+.dock-brand { display: none; }
+.dock-inner {
+  position: relative; display: flex; align-items: center; padding: 4px; touch-action: pan-y;
+  background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border); border-radius: 30px; box-shadow: var(--glass-shadow);
+}
+/* The selection lens (Dock.tsx useLens): one glass bubble that springs between tabs and follows a finger along the bar. */
+.dock-lens {
+  position: absolute; left: 0; top: 0; z-index: 0; border-radius: 26px; opacity: 0; pointer-events: none; will-change: transform, width;
+  background: rgba(255,255,255,.13); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 0 -1px 0 rgba(255,255,255,.05), 0 2px 10px rgba(0,0,0,.25);
+  transition: opacity .2s ease, background .2s ease, box-shadow .25s ease;
+}
+.dock-lens.ready { opacity: 1; }
+.dock-inner.scrubbing .dock-lens { background: rgba(255,255,255,.2); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 0 0 6px rgba(255,255,255,.06), 0 8px 24px rgba(0,0,0,.35); }
+.dock-inner.scrubbing > .dock-tab.active:not(.under) { color: var(--text-2); }
+.dock-inner.scrubbing > .dock-tab.under { color: var(--accent); }
+/* Icon over a small label, as on an iPhone. */
+.dock-tab {
+  position: relative; z-index: 1; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 58px; height: 52px; border-radius: 26px; overflow: hidden; color: var(--text-2);
+  transition: width var(--spring-snappy-dur) var(--spring-snappy), opacity .18s ease, color .2s;
+}
+.dock-tab.active { color: var(--accent); }
+.dock-ico { display: flex; transition: transform var(--spring-bouncy-dur) var(--spring-bouncy); }
+.dock-tab:active .dock-ico { transform: scale(.86); transition: var(--press); }
+.dock-label { font-size: 10.5px; font-weight: 600; letter-spacing: .01em; line-height: 1.1; white-space: nowrap; transition: opacity .15s ease; }
+@media (hover: hover) { .dock-tab:not(.active):hover { color: var(--text); } }
+.dock-tab:focus-visible { outline-offset: -3px; }
+/* Scrolled down, or something playing: only the tab you are on stays, a circle the size of Search, and the circles
+   move in beside it. A tap on it opens the whole bar again (Dock.tsx). */
+@media (max-width: 899.98px) {
+  .dock.min .dock-tab:not(.keep) { width: 0; opacity: 0; pointer-events: none; }
+  .dock.min .dock-tab.keep { width: 44px; height: 44px; border-radius: 22px; }
+  .dock.min .dock-label { opacity: 0; position: absolute; }
+}
+
+.dock-tools { display: flex; gap: 8px; }
+/* Holds the circles apart when the mini player joins the row; nothing otherwise (its margin cancels the row's gap). */
+.dock-gap { flex: 0 1 0px; margin-left: -8px; transition: flex-grow var(--spring-snappy-dur) var(--spring-snappy); }
+.dock-tool {
+  position: relative; width: 54px; height: 54px; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 27px;
+  color: var(--text); background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+  transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), background .2s, color .2s;
+}
+.dock-tool:active { transform: scale(.9); transition: var(--press); }
+.dock-tool.active { color: var(--accent); }
+.dock-tool-label, .dock-kbd, .dock-gear { display: none; }
+.dock-cast.casting::after { content: ''; position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 2px rgba(28,28,30,.9); }
+
+/* A download in flight: amber dot on the Library tab */
+.dock-tab.downloading::after { content: ''; position: absolute; top: 7px; right: 14px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px rgba(28,28,30,.9); animation: onair 1.6s ease-in-out infinite; }
+
+/* --npbar-top: from the safe area up to the top of the phone mini player, which sits 80px up and is 58px tall on one
+   line. --npbar-h is its measured height (NowPlayingBar.tsx), so a title that wraps pushes the page and toasts up. */
+.app.has-dock { --npbar-top: calc(80px + max(58px, var(--npbar-h, 0px))); padding-bottom: calc(var(--sab) + 86px); }
+.app.has-dock.has-bar { padding-bottom: calc(var(--sab) + var(--npbar-top) + 18px); }
+.app.has-dock.has-bar .toasts { bottom: calc(var(--sab) + var(--npbar-top) + 20px); }
+/* Phone: a mini player stacked on the bar, same glass and radius so the two read as one object. */
+.app.has-dock .npbar {
+  left: 10px; right: 10px; bottom: calc(var(--sab) + 80px); padding: 8px 10px 8px 8px; overflow: hidden;
+  border-radius: 28px; border: 1px solid var(--glass-border); border-top-color: var(--glass-border);
+  background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+/*
+ * Phone, while something plays (Dock.tsx useInlinePlayer): the mini player drops into the bar's row, between the tab
+ * circle and Search, and the TVs circle steps out to make room (the player is the TV's control now). The circles slide
+ * apart as the player lands, on one spring. Play and pause stay; Stop and the rest are a tap away in the remote.
+ */
+@media (max-width: 899.98px) {
+  .app.has-dock .npbar { transition: left var(--spring-snappy-dur) var(--spring-snappy), right var(--spring-snappy-dur) var(--spring-snappy), bottom var(--spring-snappy-dur) var(--spring-snappy), border-radius .3s var(--ease); }
+  .dock-cast { transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), width var(--spring-snappy-dur) var(--spring-snappy), margin var(--spring-snappy-dur) var(--spring-snappy), opacity .2s ease, background .2s, color .2s; }
+  .dock.inline { height: max(54px, var(--npbar-h, 54px)); }
+  .dock.inline .dock-gap { flex-grow: 1; }
+  .dock.inline .dock-cast { width: 0; margin-left: -8px; opacity: 0; border-width: 0; overflow: hidden; pointer-events: none; }
+  .app.has-dock:has(> .dock.inline) { --npbar-top: calc(12px + max(54px, var(--npbar-h, 0px))); }
+  .app.has-dock:has(> .dock.inline) .npbar {
+    left: calc(10px + var(--sal) + 62px); right: calc(10px + var(--sar) + 62px); bottom: calc(var(--sab) + 12px);
+    min-height: 54px; display: flex; flex-direction: column; justify-content: center; padding: 6px 6px 6px 7px; border-radius: 27px;
+  }
+  .app.has-dock:has(> .dock.inline) .npbar .np-top { gap: 10px; }
+  .app.has-dock:has(> .dock.inline) .npbar .np-top img, .app.has-dock:has(> .dock.inline) .npbar .np-glyph { width: 38px; height: 38px; border-radius: 10px; }
+  .app.has-dock:has(> .dock.inline) .npbar .np-title { font-size: 14px; line-height: 1.25; }
+  .app.has-dock:has(> .dock.inline) .npbar .np-sub { font-size: 12px; }
+  .app.has-dock:has(> .dock.inline) .npbar .np-stop { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .app.has-dock .npbar, .dock-gap, .dock-cast { transition: none !important; } }
+
+/* ============================ Wide screens: a floating bar across the top ============================ */
+@media (min-width: 900px) {
+  .dock { top: calc(var(--sat) + 12px); bottom: auto; justify-content: space-between; gap: 16px; padding: 0 calc(20px + var(--sar)) 0 calc(20px + var(--sal)); }
+  /* Scroll edge: what passes under the bar blurs and darkens, fading out below it, instead of a hard divider. */
+  .dock::before {
+    content: ''; position: fixed; left: 0; right: 0; top: 0; height: calc(var(--sat) + 96px); z-index: -1; pointer-events: none;
+    background: linear-gradient(rgba(0,0,0,.6), rgba(0,0,0,0)); backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-mask: linear-gradient(#000 45%, transparent); mask: linear-gradient(#000 45%, transparent);
+  }
+  .dock-brand { display: flex; align-items: center; flex: none; }
+  .mac-app .dock { padding-left: var(--lights); -webkit-app-region: drag; }
+  .dock-gap { display: none; }
+  .dock-brand .brand-logo { width: 118px; }
+  .dock-inner { position: absolute; left: 50%; transform: translateX(-50%); border-radius: 26px; }
+  .dock-lens { border-radius: 21px; }
+  .dock-tab { flex-direction: row; gap: 8px; width: auto; height: 42px; padding: 0 18px 0 14px; border-radius: 21px; }
+  .dock-tab .dock-ico svg { width: 19px; height: 19px; }
+  .dock-label { font-size: 14px; font-weight: 600; letter-spacing: var(--ls-body); }
+  .dock-tab.downloading::after { top: 8px; right: 8px; }
+  .dock-tools { gap: 10px; }
+  .dock-tool { width: 52px; height: 52px; border-radius: 26px; }
+  .dock-gear { display: inline-flex; }
+  .dock-search { width: auto; padding: 0 12px 0 16px; justify-content: flex-start; color: var(--text-2); }
+  .dock-tool-label { display: inline; font-size: 14px; font-weight: 500; margin-right: 18px; }
+  .dock-kbd { display: inline-block; font: 600 10.5px/1 var(--font); letter-spacing: .02em; color: var(--muted); background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 4px 6px; }
+  @media (hover: hover) { .dock-tool:hover { background: rgba(60,60,66,.62); color: var(--text); } }
+  .app.has-dock { --nav-h: calc(var(--sat) + 76px); padding-bottom: 0; padding-top: var(--nav-h); }
+  .app.has-dock.has-bar { padding-bottom: calc(var(--npbar-h, 120px) + 32px); }
+  .app.has-dock.has-bar .toasts { bottom: calc(var(--npbar-h, 120px) + 36px); }
+  /* Screens with a back bar keep it, just under the floating one. */
+  .app.has-dock .topbar { top: calc(var(--nav-h) - 8px); }
+  /* Search, Home and Settings are already in the floating bar: the back bar does not repeat them. */
+  .app.has-dock .topbar .iconbtn:is([aria-label="Search"], [aria-label="Home"], [aria-label="Settings"]) { display: none; }
+  /* The now-playing bar floats at the foot, same glass as the bar on top. */
+  .app.has-dock .npbar { left: 50%; right: auto; bottom: calc(var(--sab) + 16px); width: min(760px, calc(100% - 40px)); transform: translateX(-50%); padding: 10px 14px 10px 10px; }
+}

@@ -1,0 +1,5 @@
+{
+  // Solution file for editors: each .ts file belongs to one of these projects. `bun run typecheck` checks all three.
+  "files": [],
+  "references": [{ "path": "./tsconfig.server.json" }, { "path": "./tsconfig.client.json" }, { "path": "./tsconfig.test.json" }]
+}

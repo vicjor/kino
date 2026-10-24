@@ -1,0 +1,80 @@
+/* ============================ Command palette (Cmd+K) ===================== */
+.pal-back {
+  position: fixed; inset: 0; z-index: 80; display: flex; align-items: flex-start; justify-content: center;
+  padding: calc(var(--sat) + 12vh) 12px calc(var(--sab) + 16px);
+  background: rgba(0,0,0,.5); backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  animation: pal-fade .22s ease-out both;
+}
+.pal-back.out { animation: pal-fade-out .16s ease-in both; pointer-events: none; }
+.pal {
+  width: 100%; max-width: 640px; display: flex; flex-direction: column; max-height: min(560px, calc(100dvh - var(--sat) - 12vh - 32px));
+  background: rgba(36,36,40,.86); border: 1px solid rgba(255,255,255,.1); border-radius: 18px; overflow: hidden;
+  box-shadow: 0 30px 90px rgba(0,0,0,.65), 0 0 0 1px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
+  transform-origin: 50% 0; animation: pal-pop .32s var(--ease) both;
+}
+.pal-back.out .pal { animation: pal-pop-out .16s ease-in both; }
+@keyframes pal-fade { from { opacity: 0; } }
+@keyframes pal-fade-out { to { opacity: 0; } }
+@keyframes pal-pop { from { opacity: 0; transform: translateY(-10px) scale(.96); } }
+@keyframes pal-pop-out { to { opacity: 0; transform: translateY(-6px) scale(.98); } }
+
+.pal-input { display: flex; align-items: center; gap: 12px; height: 58px; padding: 0 16px 0 18px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.pal-input input { flex: 1; min-width: 0; height: 100%; background: none; border: 0; outline: 0; font-size: 17px; letter-spacing: -.01em; color: var(--text); }
+.pal-input input::placeholder { color: var(--muted); }
+.pal-mode { display: inline-flex; align-items: center; color: var(--muted); font-size: 12px; font-weight: 650; letter-spacing: .02em; text-transform: uppercase; }
+.pal-mode svg { width: 19px; height: 19px; }
+.pal-mode:not(:has(svg)) { padding: 3px 8px; border-radius: 7px; background: var(--accent); color: var(--accent-ink); }
+.pal kbd {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 6px;
+  font: 600 11px/1 var(--font); color: var(--muted); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); border-bottom-width: 2px;
+}
+.pal-esc { opacity: .7; }
+.pal-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.15); border-top-color: var(--accent); animation: spin .7s linear infinite; }
+
+.pal-list { overflow-y: auto; padding: 6px; scrollbar-width: none; }
+.pal-list::-webkit-scrollbar { display: none; }
+.pal-group { padding: 10px 12px 4px; font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pal-row {
+  display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 5px 10px; border-radius: 11px; cursor: pointer;
+  color: var(--text); transition: background .08s;
+}
+.pal-row.active { background: rgba(255,255,255,.09); }
+.pal-row.active .pal-ico { background: var(--accent); color: var(--accent-ink); }
+.pal-ico { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,.08); color: var(--muted); flex: none; transition: background .12s, color .12s; }
+.pal-ico svg { width: 16px; height: 16px; }
+.pal-art { width: 30px; height: 42px; border-radius: 6px; object-fit: cover; flex: none; background: rgba(255,255,255,.06); box-shadow: 0 3px 10px rgba(0,0,0,.4); }
+/* Titles, device names and what is playing wrap instead of ending in an ellipsis. */
+.pal-label { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 500; letter-spacing: -.01em; line-height: 1.3; overflow-wrap: anywhere; }
+.pal-label b { color: var(--accent); font-weight: 700; }
+.pal-hint { color: var(--muted); font-size: 12.5px; line-height: 1.3; overflow-wrap: anywhere; text-align: right; max-width: 40%; }
+.pal-kbd { display: inline-flex; gap: 3px; }
+.pal-enter { color: var(--text); background: rgba(255,255,255,.14); }
+.pal-empty { padding: 34px 16px; text-align: center; color: var(--muted); font-size: 14px; }
+.pal-empty b { color: var(--text); }
+
+.pal-foot { display: flex; align-items: center; gap: 16px; padding: 9px 16px; border-top: 1px solid rgba(255,255,255,.08); font-size: 12px; color: var(--muted); }
+.pal-foot span { display: inline-flex; align-items: center; gap: 5px; }
+.pal-brand { margin-left: auto; }
+
+@media (max-width: 600px) {
+  .pal-back { padding-top: calc(var(--sat) + 8px); align-items: flex-start; }
+  .pal { max-height: calc(100dvh - var(--sat) - var(--sab) - 24px); }
+  .pal-foot span:not(.pal-brand):nth-child(n+3) { display: none; }
+  .pal-kbd { display: none; }
+  /* Phone: the hint goes under the label, art or icon centred on both, as an iOS list cell. The return-key column keeps
+     its width on every row so moving the selection never rewraps a label. */
+  .pal-row { display: grid; grid-template-columns: auto minmax(0, 1fr) 22px; grid-template-areas: "ico label key" "ico hint key"; gap: 0 12px; align-content: center; padding-block: 7px; }
+  .pal-row > .pal-ico, .pal-row > .pal-art { grid-area: ico; align-self: center; }
+  .pal-label { grid-area: label; align-self: end; }
+  .pal-row:not(:has(.pal-hint)) .pal-label { grid-row: 1 / 3; align-self: center; }
+  .pal-hint { grid-area: hint; align-self: start; max-width: none; margin-top: 1px; text-align: left; }
+  .pal-enter { grid-area: key; align-self: center; justify-self: end; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pal, .pal-back { animation: none; }
+  /* The still ring of global.css .spinner: whole and fading round, not a broken arc */
+  .pal-spin {
+    border: 0; background: conic-gradient(rgba(255,255,255,.1), var(--accent));
+    -webkit-mask: radial-gradient(farthest-side, transparent 72%, #000 75%); mask: radial-gradient(farthest-side, transparent 72%, #000 75%);
+  }
+}

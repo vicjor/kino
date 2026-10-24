@@ -1,0 +1,50 @@
+{
+  "status": "passed",
+  "rasterFilesChecked": 123,
+  "checks": [
+    "Dimensions and Retina naming",
+    "Real transparent corners on marks and logos",
+    "Fully opaque web/PWA icons",
+    "Maskable artwork inside 40% safe circle",
+    "Black-only menu-bar template RGB with alpha",
+    "All ten standard/Retina ICNS image slots in both themes",
+    "Native iconutil round-trip of primary ICNS: ten correctly sized PNGs",
+    "Seven correctly sized PNG frames in favicon.ico"
+  ],
+  "icns": [
+    {
+      "file": "Kino.icns",
+      "chunks": [
+        "ic12",
+        "ic07",
+        "ic13",
+        "ic08",
+        "ic04",
+        "ic14",
+        "ic09",
+        "ic05",
+        "ic10",
+        "ic11",
+        "info"
+      ],
+      "bytes": 911099
+    },
+    {
+      "file": "Kino-Dark.icns",
+      "chunks": [
+        "ic12",
+        "ic07",
+        "ic13",
+        "ic08",
+        "ic04",
+        "ic14",
+        "ic09",
+        "ic05",
+        "ic10",
+        "ic11",
+        "info"
+      ],
+      "bytes": 882659
+    }
+  ]
+}

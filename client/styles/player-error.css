@@ -1,0 +1,7 @@
+/* Playback stopped: reason, a hint about what to do, the raw detail for the curious, then the ways out */
+.perror { z-index: 4; gap: 10px; }
+.perror strong { font-size: 20px; }
+.perror p { max-width: 46ch; color: rgba(255,255,255,.9); font-size: 16px; }
+.perror .perror-hint { color: rgba(255,255,255,.62); font-size: 14px; max-width: 52ch; }
+.perror-detail { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgba(255,255,255,.45); background: rgba(255,255,255,.06); padding: 6px 10px; border-radius: 8px; max-width: min(90vw, 70ch); overflow-wrap: anywhere; }
+.perror-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }

@@ -1,0 +1,32 @@
+name: Bug
+description: Something plays wrong, casts wrong, or does not play at all
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please do not name or link to torrent sites, stream addons or any source of content, and do not paste magnet links or addon URLs. Describe the file instead (container, codecs, size). Issues that do will be closed.
+  - type: input
+    id: device
+    attributes:
+      label: Playback device
+      placeholder: iPhone 15 Safari / Chrome on Mac / Chromecast (2nd gen)
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server
+      placeholder: macOS on Apple Silicon, Node 26, Kino 0.2.0 (Settings, About shows the Kino and Node versions)
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got. If playback is involved, include the line under the title in the player (Direct, Remuxed or Transcoded, plus the codec).
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant lines from both ~/Library/Logs/kino/kino.log and ~/Library/Logs/kino/kino.error.log (warnings and errors land in the second; `make logs-local` tails the first). The health JSON from /health helps too.
+      render: json

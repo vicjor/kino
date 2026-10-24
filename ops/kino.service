@@ -1,0 +1,19 @@
+# systemd user unit for Linux (Raspberry Pi, NAS, a mini PC next to the TV).
+#   mkdir -p ~/.config/systemd/user && cp ops/kino.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now kino
+#   loginctl enable-linger $USER      # keep it running when you are logged out
+# Edit WorkingDirectory and the node path (Node 26). Build first: bun install --frozen-lockfile && bun run build.
+[Unit]
+Description=Kino, self-hosted streaming for the LAN
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=%h/kino
+ExecStart=/usr/bin/env node dist/server/index.js
+Environment=NODE_ENV=production PORT=1234 KINO_DATA=%h/kino-data
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

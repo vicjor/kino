@@ -1,0 +1,407 @@
+:root {
+  /* Apple's dark system palette: a true black base, the grouped grays above it, the Kino amber as the one tint. */
+  --bg: #000000;
+  --surface: #1c1c1e;     /* secondary system background: cards, grouped lists */
+  --raised: #2c2c2e;      /* tertiary: controls on a card, selected segments */
+  --line: #38383a;        /* opaque separator */
+  --hair: rgba(84,84,88,.55);      /* separator over glass or artwork */
+  --fill: rgba(118,118,128,.24);   /* gray button and field fill: tints whatever is under it */
+  --fill-strong: rgba(118,118,128,.36);
+  --text: #f5f5f7;
+  --text-2: rgba(235,235,245,.82); /* long-form copy: plots, overviews */
+  --muted: #98989f;       /* secondary text: 4.8:1 even on --raised */
+  --dim: #636366;         /* status dots and disabled controls only: too faint for text, which uses --muted */
+  /* No house colour: white is the one tint, and the colour on screen comes from the artwork (Ambient.tsx). */
+  --accent: #ffffff;
+  --accent-ink: #000000;
+  --danger: #ff453a;
+  --danger-text: #ff6961;  /* error copy, red chips */
+  --warn: #f0c084;         /* amber hint copy */
+  --ok: #30d158;
+  --radius: 12px;
+  --radius-lg: 22px;       /* sheets, panels, the spotlight */
+  /*
+   * Type: hierarchy from size, weight and tracking together. Tracking is per size, never one value: large text
+   * tightens, small text opens up a hair, capitals open up most.
+   */
+  --ls-large: -0.022em;    /* 34px large titles */
+  --ls-title: -0.018em;    /* 22 to 28px */
+  --ls-head: -0.012em;     /* 17 to 20px */
+  --ls-body: -0.006em;     /* 13 to 15px */
+  --ls-caps: .06em;        /* 11 to 12px capitals */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --pad: 16px;
+  --font: -apple-system, BlinkMacSystemFont, system-ui, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* motion: the Apple sheet curve for everything that arrives or moves, in-out curves for exits */
+  --ease: cubic-bezier(.32,.72,0,1);
+  --ease-exit: cubic-bezier(.4,0,.6,1);        /* panels and popups leaving */
+  --ease-sheet-exit: cubic-bezier(.4,0,.7,1);  /* sheets dismissed */
+  --ease-dock: cubic-bezier(.3,.8,.3,1);       /* dock tab pill */
+  /*
+   * Springs as CSS easings, for what nothing can grab (a press released, a hover, a toggle knob). Sampled from
+   * client/lib/spring.ts springEasing(): smooth is damping 1 response .4, snappy damping 1 response .3, bouncy damping .8
+   * response .4. Pair each with its -dur. Anything a finger drags runs on the JS Spring instead (interruptible).
+   */
+  --spring-smooth: linear(0, 0.062, 0.193, 0.34, 0.478, 0.597, 0.695, 0.772, 0.831, 0.877, 0.91, 0.935, 0.953, 0.967, 0.976, 0.983, 0.988, 0.992, 0.994, 0.996, 0.997, 0.998, 0.999, 0.999, 1);
+  --spring-smooth-dur: 0.62s;
+  --spring-snappy: linear(0, 0.089, 0.262, 0.44, 0.591, 0.71, 0.799, 0.862, 0.907, 0.938, 0.959, 0.973, 0.982, 0.988, 0.992, 0.995, 0.997, 0.998, 0.999, 0.999, 1);
+  --spring-snappy-dur: 0.48s;
+  --spring-bouncy: linear(0, 0.036, 0.125, 0.239, 0.362, 0.483, 0.593, 0.69, 0.771, 0.838, 0.891, 0.931, 0.961, 0.983, 0.997, 1.007, 1.012, 1.015, 1.015, 1.015, 1.013, 1.011, 1.01, 1.008, 1.006, 1.005, 1.003, 1.002, 1.002, 1.001, 1.001, 1, 1);
+  --spring-bouncy-dur: 0.6s;
+  --press: transform .12s ease-out;            /* pointer down: in at once */
+  /*
+   * Glass: the dock, the phone mini player, side sheets, toasts. A light material for things you touch, with a bright
+   * top edge where light catches it. --chrome-* is the heavier material behind bars that content scrolls under.
+   */
+  --glass-bg: rgba(36,36,40,.56);
+  --glass-blur: blur(28px) saturate(1.8);
+  --glass-border: rgba(255,255,255,.1);
+  --glass-shadow: 0 12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(255,255,255,.03);
+  --chrome-bg: rgba(0,0,0,.62);
+  --chrome-blur: blur(20px) saturate(1.8);
+  color-scheme: dark;
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root { --glass-bg: rgba(36,36,40,.97); --glass-blur: none; --chrome-bg: rgba(0,0,0,.96); --chrome-blur: none; --fill: rgba(118,118,128,.36); }
+}
+@media (prefers-contrast: more) {
+  :root { --glass-bg: rgba(28,28,30,.98); --glass-border: rgba(255,255,255,.45); --chrome-bg: rgba(0,0,0,.97); --line: #636366; --hair: rgba(255,255,255,.4); --muted: #c7c7cc; }
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; font: 15px/1.45 var(--font); letter-spacing: var(--ls-body); color: var(--text); background: none;   /* html paints the black, so the ambient light (z-index -1) shows above it */
+  -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; font-optical-sizing: auto;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button:disabled { opacity: .45; cursor: default; }
+input, select, textarea { font: inherit; color: inherit; }
+/* The browser default (#757575 in Chrome, faded further in Firefox) is 3.3:1 on --raised; --muted passes 4.5:1 on every field. */
+::placeholder { color: var(--muted); opacity: 1; }
+img { display: block; max-width: 100%; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: var(--ls-head); }
+h1 { font-size: 34px; line-height: 1.12; letter-spacing: var(--ls-large); }
+h2 { font-size: 20px; line-height: 1.25; }
+p { margin: 0; }
+/*
+ * Reduced motion keeps the feedback and drops the travel: colours and fades still ease (they help you follow what
+ * changed), anything that moves or scales snaps, and keyframe motion stops.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-property: opacity, color, background-color, border-color, box-shadow !important; transition-duration: .2s !important; }
+}
+
+.app { min-height: 100dvh; padding-bottom: calc(var(--sab) + 16px); overflow-x: clip; }
+/* Room for the now-playing bar: the fixed value fits one line, --npbar-h (its measured height, NowPlayingBar.tsx) a title that wraps. */
+.app.has-bar { padding-bottom: max(calc(var(--sab) + 96px), calc(var(--npbar-h, 0px) + 16px)); }
+
+/*
+ * Top bar: a floating layer, not an opaque strip. Content scrolls under it and the bar frosts what passes beneath,
+ * fading out at its lower edge (a scroll edge effect) instead of drawing a divider. The inline title appears once the
+ * page's large title has scrolled under the bar (TopBar.tsx), as in iOS.
+ */
+.topbar {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; isolation: isolate;
+  padding: calc(var(--sat) + 8px) calc(var(--pad) + var(--sar)) 8px calc(var(--pad) + var(--sal));
+}
+.topbar::before {
+  content: ''; position: absolute; inset: 0 0 -18px; z-index: -1; pointer-events: none;
+  background: linear-gradient(var(--chrome-bg) 55%, transparent);
+  backdrop-filter: var(--chrome-blur); -webkit-backdrop-filter: var(--chrome-blur);
+  -webkit-mask: linear-gradient(#000 calc(100% - 26px), transparent); mask: linear-gradient(#000 calc(100% - 26px), transparent);
+}
+/* The inline title: centred like a navigation bar's, shown once the large title has gone under the bar. */
+.topbar-title {
+  position: absolute; left: 50%; bottom: 0; height: 60px; max-width: calc(100% - 2 * (var(--pad) + 104px)); display: flex; align-items: center;
+  transform: translate(-50%, 6px); opacity: 0; pointer-events: none; text-align: center;
+  font-size: 17px; font-weight: 650; letter-spacing: var(--ls-head); line-height: 1.2; overflow-wrap: anywhere;
+  transition: opacity .2s ease, transform var(--spring-snappy-dur) var(--spring-snappy);
+}
+.topbar.collapsed .topbar-title { opacity: 1; transform: translate(-50%, 0); }
+/* Large title under the bar: the page's h1. Wraps in full, a name is never cut short. */
+.large-title { padding: 2px calc(var(--pad) + var(--sar)) 10px calc(var(--pad) + var(--sal)); overflow-wrap: break-word; }
+.wordmark { display: inline-flex; align-items: center; flex: none; }
+.brand-logo { display: block; width: 144px; height: auto; flex: none; }
+.topbar .spacer { flex: 1; }
+.iconbtn {
+  width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+  color: var(--text); flex: none;
+}
+.iconbtn:active { background: var(--fill); }
+.iconbtn svg { width: 22px; height: 22px; }
+
+.search {
+  flex: 1; max-width: 520px; display: flex; align-items: center; gap: 8px; background: var(--fill); border-radius: 22px;
+  height: 44px; padding: 0 14px;
+}
+.search input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; font-size: 16px; }
+.search input::placeholder { color: var(--muted); }
+.search svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+/* The field has no outline of its own, so the pill takes the accent ring the magnet box uses. */
+.search { transition: box-shadow .25s var(--ease); }
+.search:focus-within { box-shadow: inset 0 0 0 1px rgba(255,255,255,.6), 0 0 0 4px rgba(255,255,255,.12); }
+
+/* buttons */
+/* Filled, never outlined: gray for the usual action, the tint for the one that matters, a lighter gray for the rest. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px;
+  border-radius: 22px; background: var(--fill-strong); font-weight: 600; letter-spacing: var(--ls-body); white-space: nowrap;
+}
+.btn:active { filter: brightness(1.15); }
+.btn.primary { background: #fff; color: #000; }
+.btn.ghost { background: var(--fill); }
+.btn.danger { color: var(--danger-text); }
+.btn.small { min-height: 36px; padding: 0 14px; font-size: 14px; border-radius: 18px; }
+/*
+ * Touch: controls drawn smaller than 44 px keep their look and get a 44 px hit area from an invisible ::before,
+ * centred and never smaller than the control. Touch only, so a mouse just off a card's corner still opens the card.
+ */
+@media (pointer: coarse) {
+  .btn.small, .langs .lang button, .src-actions .iconbtn, .pnotice-x { position: relative; }
+  .btn.small::before, .langs .lang button::before, .rm-btn::before, .card-cast::before, .spot-close::before,
+  .src-actions .iconbtn::before, .pnotice-x::before {
+    content: ''; position: absolute; inset: min(0px, calc(50% - 22px));
+  }
+}
+.btn svg { width: 18px; height: 18px; }
+
+/* chips */
+.chip {
+  display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 12px; font-weight: 600; line-height: 1.4;
+  background: var(--raised); color: var(--muted); white-space: nowrap;
+}
+.chip.strong { color: var(--text); }
+.chip.accent { background: rgba(255,255,255, .16); color: var(--accent); }
+.chip.warn { background: rgba(255,69,58, .16); color: var(--danger-text); }
+.chip.ok { background: rgba(48,209,88, .15); color: var(--ok); }
+/* A breathing dot: the "Now on" kicker on Home and the Library tab's download dot (dock.css). (The green .chip.live in
+   title.css marks the source a TV plays.) */
+@keyframes onair { 50% { opacity: .35; transform: scale(.8); } }
+
+@media (min-width: 720px) { :root { --pad: 28px; } }
+
+/* misc */
+.empty { padding: 32px calc(var(--pad) + var(--sar)) 32px calc(var(--pad) + var(--sal)); color: var(--muted); text-align: center; }
+.empty strong { color: var(--text); display: block; margin-bottom: 4px; }
+.empty.inline { padding-top: 8px; padding-bottom: 16px; text-align: left; }
+.err { padding: 14px calc(var(--pad) + var(--sar)) 14px calc(var(--pad) + var(--sal)); color: var(--danger-text); }
+/* Only the message is red: a Try again button keeps the normal text colour. */
+.err button { color: var(--text); }
+/* Read by screen readers, never drawn: a heading a screen needs but does not show. */
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.spinner { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,.18); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* A status dot for a TV that is turning on: the Cast picker and the Cast Center both pulse it. */
+@keyframes dot-wake { 50% { opacity: .25; transform: scale(.7); } }
+/* Placeholder rows and tiles while the TV list loads: the Cast picker and the Cast Center both breathe them. */
+@keyframes skeleton-pulse { to { opacity: .45; } }
+.center { display: flex; align-items: center; justify-content: center; padding: 40px; }
+/* Suspense fallback while a screen's chunk loads: nothing for the usual LAN blink, a spinner after 400ms. */
+.screen-wait { min-height: 60vh; display: flex; align-items: center; justify-content: center; }
+.screen-wait.dark { position: fixed; inset: 0; min-height: 0; background: #000; z-index: 30; }
+.screen-wait .spinner { opacity: 0; animation: spin .8s linear infinite, screen-wait-in .2s ease .4s forwards; }
+@keyframes screen-wait-in { to { opacity: 1; } }
+/*
+ * Reduced motion stops every animation, and a ring that cannot turn reads as broken. So the ring goes whole, fading
+ * round like a spinner's tail, the screen and section waits say Loading beside it, and the screen wait still shows
+ * up after 400ms: a one-step opacity change, nothing moves.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    border: 0; background: conic-gradient(rgba(255,255,255,.1), var(--accent));
+    -webkit-mask: radial-gradient(farthest-side, transparent 77%, #000 79%); mask: radial-gradient(farthest-side, transparent 77%, #000 79%);
+  }
+  .screen-wait::after, .center:has(> .spinner)::after { content: 'Loading'; margin-left: 10px; color: var(--muted); font-size: 14px; }
+  /* A spinner in .center is a status named Loading: the drawn word stays out of the accessibility tree. */
+  .center:has(> .spinner)::after { content: 'Loading' / ''; }
+  .screen-wait .spinner, .screen-wait::after { opacity: 0; animation: screen-wait-in 1ms .4s forwards !important; }
+}
+
+/* Two live regions, notes then errors, stacked as one column. Only a toast takes taps (one tap dismisses it), never the strip. */
+.toasts { position: fixed; left: 0; right: 0; bottom: calc(var(--sab) + 100px); z-index: 60; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.app.has-bar .toasts { bottom: max(calc(var(--sab) + 100px), calc(var(--npbar-h, 0px) + 20px)); }
+.toast-region { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.toast-region:not(:empty) + .toast-region:not(:empty) { margin-top: 8px; }
+/* A glass capsule that materializes: blur, scale and opacity arrive together, so it reads as a surface, not a fade. */
+.toast {
+  color: var(--text); padding: 11px 18px; border-radius: 22px; font-size: 14px; font-weight: 600; letter-spacing: var(--ls-body); max-width: 90vw; pointer-events: auto; cursor: pointer;
+  background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+  animation: toast-in var(--spring-bouncy-dur) var(--spring-bouncy) both;
+}
+.toast.error { color: var(--danger-text); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px) scale(.86); filter: blur(8px); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: toast-fade .2s ease both !important; } @keyframes toast-fade { from { opacity: 0; } } }
+
+/*
+ * Modal / sheet: bottom drawer on phones, dialog on desktop. Sheet.tsx moves the panel on a spring (it follows the
+ * finger, can be caught mid-flight and keeps its speed when let go), and fades .sheet-dim with it, so neither has a
+ * CSS animation. The dim is its own layer so only its opacity changes per frame.
+ */
+.sheet-back { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.sheet-dim { position: absolute; inset: 0; background: rgba(0,0,0,.5); opacity: 0; will-change: opacity; }
+/* Closing: taps go through to the page at once, but the panel can still be caught and pulled back up. */
+.sheet-back.leaving { pointer-events: none; }
+.sheet-back.leaving .sheet { pointer-events: auto; }
+.sheet {
+  position: relative; width: 100%; max-width: 560px; max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--surface); border-radius: 28px 28px 0 0;
+  padding: 6px var(--pad) calc(var(--sab) + 16px); touch-action: pan-y; outline: none; will-change: transform;
+  box-shadow: 0 -12px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.sheet-grab { display: flex; justify-content: center; padding: 6px 0 10px; cursor: grab; touch-action: none; }
+.sheet-grab i { display: block; width: 36px; height: 5px; border-radius: 3px; background: rgba(235,235,245,.3); }
+.sheet.dragging .sheet-grab { cursor: grabbing; }
+@media (min-width: 720px) {
+  .sheet-back { align-items: center; }
+  .sheet { border-radius: var(--radius-lg); padding-top: 14px; padding-bottom: 16px; box-shadow: 0 30px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06); }
+  .sheet-grab { display: none; }
+}
+.sheet h2 { padding: 4px 0 12px; touch-action: none; }
+.sheet .row { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 0; border-top: 1px solid var(--line); }
+.sheet .row:first-of-type { border-top: 0; }
+.sheet .row .grow { flex: 1; min-width: 0; }
+.sheet .row .grow small { display: block; color: var(--muted); font-size: 12px; }
+.sheet-actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 14px; }
+
+/* Side sheet: same glass as the cast widget. Right quarter of the screen on wide
+   layouts (desktop, phone landscape), no dim so the video keeps playing behind it. */
+.sheet-back.side .sheet-dim { display: none; }
+.sheet-back.side .sheet {
+  background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+}
+.sheet-back.side .sheet .row { border-top-color: var(--hair); }
+@media (min-width: 720px) {
+  .sheet-back.side { align-items: stretch; justify-content: flex-end; padding: calc(var(--sat) + 16px) calc(var(--sar) + 16px) calc(var(--sab) + 16px) 0; }
+  .sheet-back.side .sheet {
+    width: clamp(300px, 25vw, 400px); max-width: none; max-height: none; border-radius: 28px; padding: 14px 16px 16px;
+  }
+  .sheet-back.side .sheet h2 { font-size: 17px; }
+  /* source rows bleed into the page gutter on the title page; inside the narrow panel that overflows sideways */
+  .sheet-back.side .sheet { overflow-x: hidden; }
+  .sheet-back.side .sheet .source { margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+  .sheet-back.side .sheet .source + .source::before { left: 8px; right: 8px; }
+  .sheet-back.side .sheet .src-actions .iconbtn { width: 36px; height: 36px; }
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; }
+.field label { font-size: 13px; color: var(--muted); }
+.field input[type=text], .field input[type=url], .field input[type=number], .field select, .field textarea {
+  background: var(--fill); border: 1px solid transparent; border-radius: 12px; padding: 10px 12px; min-height: 44px; outline: 0; width: 100%;
+  transition: border-color .2s ease, box-shadow .25s ease;
+}
+.field input:focus, .field textarea:focus { border-color: rgba(255,255,255,.7); box-shadow: 0 0 0 4px rgba(255,255,255,.14); }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+/*
+ * Checkboxes in a .switch are iOS switches: a track that fills with the tint and a knob that springs across, with a
+ * little bounce because it was flicked. Still a native checkbox underneath (Space toggles, it is announced checked).
+ */
+.switch input[type=checkbox] {
+  -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 51px; height: 31px; margin: 0; border-radius: 16px; cursor: pointer;
+  background: var(--fill-strong); transition: background .25s ease;
+}
+.switch input[type=checkbox]::before {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff;
+  box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 3px 1px rgba(0,0,0,.06);
+  transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), width .18s ease;
+}
+.switch input[type=checkbox]:checked { background: var(--ok); }
+.switch input[type=checkbox]:checked::before { transform: translateX(20px); }
+/* Held down, the knob stretches toward where it will go. */
+.switch input[type=checkbox]:active::before { width: 33px; }
+.switch input[type=checkbox]:checked:active::before { transform: translateX(14px); }
+.switch input[type=checkbox]:disabled { opacity: .45; cursor: default; }
+.switch input[type=checkbox]:focus-visible { outline-offset: 3px; }
+
+/* ============================ Screen headers / search ===================== */
+.screen-head { display: flex; align-items: center; gap: 12px; padding: calc(var(--sat) + 20px) calc(var(--pad) + var(--sar)) 12px calc(var(--pad) + var(--sal)); }
+.screen-head h1 { font-size: 34px; }
+.home-head { justify-content: space-between; }
+.home-head .wordmark.big .brand-logo { width: 160px; }
+.ghost-btn { color: var(--muted); }
+.ghost-btn:hover { color: var(--text); }
+
+.search-hero { padding: calc(var(--sat) + 20px) calc(var(--pad) + var(--sar)) 10px calc(var(--pad) + var(--sal)); }
+.search.big { max-width: 640px; height: 52px; border-radius: 26px; font-size: 16px; padding: 0 8px 0 16px; }
+.search.big input { font-size: 16px; }
+.search-hint { padding: 40px var(--pad); text-align: center; color: var(--muted); display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.grid.pad { padding: 8px calc(var(--pad) + var(--sar)) 6px calc(var(--pad) + var(--sal)); }
+
+/* Roomier gutters + a comfortable max width on big screens */
+@media (min-width: 1000px) { :root { --pad: 34px; } }
+/* Wide screens: one centered column, rails run edge to edge inside it. Home has no cap: its hero meets both edges of any window. */
+.screen { max-width: 1760px; margin-inline: auto; }
+
+@media (min-width: 720px) { .search-hero { padding-top: calc(var(--sat) + 26px); } }
+/* Wide screens carry the logo and Settings in the floating bar. */
+@media (min-width: 900px) { .home-head { display: none; } .app.has-dock .search-hero { padding-top: 10px; } }
+
+/* ============================ Motion + hover (shared) ===================== */
+/*
+ * Press feedback lands on pointer down, at once (--press), and lets go on a spring with a little bounce, the way a
+ * physical button comes back up. main.tsx registers a passive touchstart so iOS Safari applies :active at all.
+ * Hover effects only where a pointer exists, so touch never sticks.
+ */
+.btn { transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), filter .25s var(--ease), background .25s var(--ease), color .2s; }
+.btn:active { transform: scale(.96); filter: brightness(1.1); transition: var(--press), filter .1s, background .1s; }
+.btn.big { min-height: 50px; padding: 0 22px; font-size: 16px; border-radius: 25px; }
+.btn.big svg { width: 20px; height: 20px; }
+.btn.glass {
+  background: rgba(255,255,255,.16); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); min-height: 50px; padding: 0 20px; border-radius: 25px; font-size: 16px; color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 -1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(255,255,255,.08), 0 6px 20px rgba(0,0,0,.25);
+}
+.iconbtn { transition: background .25s var(--ease), color .2s, transform var(--spring-bouncy-dur) var(--spring-bouncy); }
+.iconbtn:active { transform: scale(.9); transition: var(--press), background .1s; }
+.spinner.tiny { width: 18px; height: 18px; border-width: 2px; }
+
+@media (hover: hover) {
+  .btn:hover { filter: brightness(1.12); }
+  .btn.primary:hover { filter: brightness(.92); }
+  .btn.glass:hover { background: rgba(255,255,255,.22); }
+  .iconbtn:hover { background: var(--fill); }
+}
+
+/*
+ * Screens arrive along the path you took: a push comes in from the right, Back brings the previous screen in from the
+ * left, a tab change only cross-fades (tabs sit side by side, nothing is on top of anything). The router says which
+ * (navKind in router.ts). The player is exempt so video never animates.
+ */
+/* backwards, never both: a transform left filling after the entrance would make this wrapper the containing block of
+   every position: fixed inside it (sheets would scroll with the page) and a stacking context under the dock. */
+.screen-in { animation: screen-fade .22s ease-out backwards; }
+.screen-in.nav-push { animation: screen-push var(--spring-smooth-dur) var(--spring-smooth) backwards, screen-fade .2s ease-out backwards; }
+.screen-in.nav-pop { animation: screen-pop var(--spring-smooth-dur) var(--spring-smooth) backwards, screen-fade .2s ease-out backwards; }
+@keyframes screen-fade { from { opacity: 0; } }
+@keyframes screen-push { from { transform: translateX(44px); } }
+@keyframes screen-pop { from { transform: translateX(-32px); } }
+@media (prefers-reduced-motion: reduce) { .screen-in, .screen-in.nav-push, .screen-in.nav-pop { animation: screen-fade .2s ease-out backwards !important; } }
+
+/*
+ * The artwork's light behind the page (Ambient.tsx): the picture on show, blurred far past recognition, dimmed and
+ * fading out down the page. It is the only colour the interface has. Frosted glass picks it up through its blur.
+ */
+.ambient {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; transition: opacity 1s ease;
+  -webkit-mask: linear-gradient(#000, rgba(0,0,0,.75) 35%, rgba(0,0,0,.3) 70%, transparent); mask: linear-gradient(#000, rgba(0,0,0,.75) 35%, rgba(0,0,0,.3) 70%, transparent);
+}
+.ambient.off { opacity: 0; }
+.ambient-layer { position: absolute; inset: -18%; background: center 30% / cover no-repeat; filter: blur(72px) saturate(1.7) brightness(.6); animation: ambient-in 1s ease both; }
+@keyframes ambient-in { from { opacity: 0; } }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) { .ambient { display: none; } }
+
+/*
+ * Kino.app on a Mac (.mac-app, main.tsx): no title bar, so the traffic lights sit over the top left corner. A wide
+ * window starts its top row after them (here, dock.css, player.css); a narrow one gets a strip above, like a notch.
+ * The bars' empty space drags the window, as a title bar would. Controls and overlays opt out: Electron would drag
+ * through anything drawn over a drag region.
+ */
+:root.mac-app { --lights: 100px; }
+@media (max-width: 899.98px) { :root.mac-app { --sat: 52px; } }
+@media (min-width: 900px) { .mac-app .app:not(.has-dock) .topbar { padding-top: 16px; padding-left: var(--lights); } }
+.mac-app .topbar { -webkit-app-region: drag; }
+.mac-app :is(a, button, input, select, textarea, [tabindex], [role="button"]),
+.mac-app :is(.sheet-back, .pal-back, .cc-back, .ob, .player, .eps-dim, .screen-wait) { -webkit-app-region: no-drag; }

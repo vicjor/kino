@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run test
+      # Not `bun run build`: build:check also runs scripts/verify-build.ts (entry chunk size, sw.js pre-cache).
+      - run: bun run build:check
+      - run: bun run knip
+      # Fails only on advisories without an Accepted row in docs/security-advisories.md.
+      - run: bun run audit:gate

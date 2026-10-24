@@ -1,0 +1,40 @@
+/* Browse: kind and sort as segments, genres as a chip rail, then the grid */
+.browse-controls { display: flex; flex-wrap: wrap; gap: 10px; padding: 6px calc(var(--pad) + var(--sar)) 10px calc(var(--pad) + var(--sal)); }
+.browse-controls .seasons { flex: none; }
+/* Phones: each segment group spans the row, so the two stack as one tidy block instead of ragged pills */
+@media (max-width: 719.98px) { .browse-controls .seasons { flex: 1 1 100%; } .browse-controls .seg { flex: 1; padding: 0 8px; } }
+.browse-genres {
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px calc(var(--pad) + var(--sar)) 14px calc(var(--pad) + var(--sal)); scroll-snap-type: x proximity;
+  scroll-padding-inline: calc(var(--pad) + var(--sal)) calc(var(--pad) + var(--sar));
+}
+.browse-genres::after { content: ''; flex: none; width: 1px; }
+.browse-genres::-webkit-scrollbar { display: none; }
+.browse-genres .chip.big { flex: none; scroll-snap-align: start; }
+.browse-genres .chip.big.on { background: #fff; color: #000; border-color: transparent; }
+.browse-years { padding-top: 0; }
+/* Any window of years: two short fields and Show, in the row under the year chips. */
+.year-range { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; padding: 0 calc(var(--pad) + var(--sar)) 14px calc(var(--pad) + var(--sal)); }
+.year-range label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.year-range input { width: 96px; min-height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid transparent; background: var(--fill); font-size: 16px; font-variant-numeric: tabular-nums; outline: 0; }
+.year-range input:focus { border-color: rgba(255,255,255,.7); }
+.year-range .btn { min-height: 40px; }
+.browse-sentinel { height: 1px; }
+.browse .grid.pad { padding-bottom: 20px; }
+
+/* Mood tiles: "Make me laugh", a colour, a genre. Typographic, no artwork to load. */
+.moods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0 calc(var(--pad) + var(--sar)) 8px calc(var(--pad) + var(--sal)); }
+@media (min-width: 720px) { .moods { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; } }
+.mood {
+  position: relative; display: flex; flex-direction: column; justify-content: flex-end; gap: 3px; min-height: 92px; padding: 14px 14px 12px;
+  border-radius: 18px; text-align: left; overflow: hidden; color: #fff; border: 1px solid rgba(255,255,255,.06);
+  background: linear-gradient(135deg, hsl(var(--h) 55% 30%), hsl(calc(var(--h) + 28) 60% 16%));
+  transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), filter .25s var(--ease);
+}
+.mood::after { content: ''; position: absolute; right: -24px; top: -24px; width: 96px; height: 96px; border-radius: 50%; background: hsl(var(--h) 70% 55% / .35); filter: blur(18px); }
+.mood-title { font-size: 16px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; position: relative; }
+.mood-sub { font-size: 12px; color: rgba(255,255,255,.72); position: relative; }
+.mood:active { transform: scale(.96); transition: var(--press), filter .1s; }
+.mood:focus-visible { outline-offset: 3px; }
+@media (hover: hover) { .mood:hover { transform: translateY(-2px); filter: brightness(1.12); } }
+/* On Home the moods run as a rail, one tile per column */
+.rail .mood { width: 100%; min-height: 104px; }

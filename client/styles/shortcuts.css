@@ -1,0 +1,40 @@
+/* Key caps, HUD and the cheat sheet */
+.keycap {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 6px;
+  font: 600 12px/1 var(--font); color: var(--text); background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); box-shadow: inset 0 -1px 0 rgba(0,0,0,.4);
+  white-space: nowrap;
+}
+.hud {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; pointer-events: none;
+  display: inline-flex; align-items: center; gap: 12px; padding: 12px 18px; border-radius: 16px; font-size: 17px; font-weight: 600;
+  background: rgba(36,36,40,.72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,.45); animation: hud .9s var(--ease) both;
+}
+.hud .keycap { height: 24px; min-width: 24px; font-size: 13px; opacity: .8; }
+@keyframes hud { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.9); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.02); } }
+
+.keys-grid { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.keys-group h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 16px 0 6px; font-weight: 700; }
+.keys-group:first-child h3 { padding-top: 6px; }
+.keys-row { display: flex; align-items: center; gap: 14px; min-height: 36px; }
+.keys-caps { display: inline-flex; align-items: center; gap: 3px; flex: none; width: 124px; }
+.keys-caps > span { display: inline-flex; align-items: center; }
+.keys-or { color: var(--muted); font-size: 11px; margin: 0 4px; }
+.keys-what { flex: 1; min-width: 0; color: var(--text); font-size: 14px; line-height: 1.3; }
+
+/* Hover hints on player buttons: "Pause · K" above the button (below for the top bar). Pointer devices only. */
+@media (hover: hover) {
+  .controls .iconbtn[data-key] { position: relative; }
+  .controls .iconbtn[data-key]::after {
+    content: attr(data-hint) "  ·  " attr(data-key); position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translate(-50%, 4px);
+    white-space: nowrap; font: 500 12px/1 var(--font); color: var(--text); background: rgba(36,36,40,.92); border: 1px solid rgba(255,255,255,.1);
+    padding: 6px 9px; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .18s var(--ease) .35s, transform .18s var(--ease) .35s;
+  }
+  .controls .iconbtn[data-key]:hover::after { opacity: 1; transform: translate(-50%, 0); }
+  .controls .ctl-top .iconbtn[data-key]::after { bottom: auto; top: calc(100% + 6px); transform: translate(-50%, -4px); }
+  .controls .ctl-top .iconbtn[data-key]:hover::after { transform: translate(-50%, 0); }
+  .controls .ctl-mid .iconbtn[data-key]::after { bottom: calc(100% + 10px); }
+}
+.key-nudge { position: absolute; right: calc(var(--sar) + 16px); bottom: calc(var(--sab) + 200px); color: rgba(255,255,255,.6); font-size: 13px; display: inline-flex; align-items: center; gap: 8px; animation: nudge 9s ease both; pointer-events: none; }
+@keyframes nudge { 0% { opacity: 0; transform: translateY(6px); } 8% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
+.keys-btn .keys-glyph { font-weight: 700; font-size: 17px; line-height: 1; }

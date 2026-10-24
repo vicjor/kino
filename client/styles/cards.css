@@ -1,0 +1,100 @@
+/* Rows, grids and cards: Row, MetaCard and the wide cards. Imported by Card.tsx. */
+.section { padding: 6px 0 12px; }
+.section-head { display: flex; align-items: baseline; gap: 10px; padding: 0 calc(var(--pad) + var(--sar)) 10px calc(var(--pad) + var(--sal)); }
+.section-head h2 { font-size: 20px; letter-spacing: var(--ls-head); line-height: 1.2; }
+.section-head .more { color: var(--accent); font-size: 15px; font-weight: 500; margin-left: auto; flex: none; }
+.section-title { min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+/* Why the rail is here, often naming a title: wraps, never an ellipsis. */
+.section-sub { font-size: 12.5px; line-height: 1.35; color: var(--muted); }
+.section-link { color: inherit; text-decoration: none; }
+.section-link h2 { display: inline-flex; align-items: center; gap: 1px; }
+.section-link h2 svg { flex: none; color: var(--muted); stroke-width: 2.8; margin-top: 2px; transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), color .2s; }
+@media (hover: hover) { .section-link:hover h2 svg { transform: translateX(4px); color: var(--text); } .see-all:hover { color: var(--text); } }
+.see-all { text-decoration: none; }
+/* Small text, full-size tap target: the padding grows the hit area, the negative margin keeps the layout */
+.see-all, .section-head .more > a, .more.link { display: inline-block; padding: 12px 0 12px 14px; margin: -12px 0 -12px -14px; border-radius: 8px; }
+.section-link:focus-visible { outline-offset: 4px; border-radius: 6px; }
+.see-all::after { content: ' ›'; }
+@media (hover: hover) { .section-head .more:hover, .see-all:hover { color: var(--accent); filter: brightness(1.15); } }
+.card.watched .poster img { opacity: .55; }
+.card-seen { position: absolute; top: 8px; left: 8px; }
+.card { position: relative; }
+.rail {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 128px; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity;
+  padding: 0 calc(var(--pad) + var(--sar)) 6px calc(var(--pad) + var(--sal)); scrollbar-width: none;
+  /* snap points respect the gutter, otherwise the first card snaps flush to the edge */
+  scroll-padding-inline: calc(var(--pad) + var(--sal)) calc(var(--pad) + var(--sar));
+}
+.rail::after { content: ''; width: 1px; }
+.rail::-webkit-scrollbar { display: none; }
+.rail > * { scroll-snap-align: start; }
+/* A card is a button, and a button stretched to its row centres its content: so a card with no year or a one-line name sat lower than its neighbours. */
+.rail > .card, .grid > .card, .rail > .rm-card { align-self: start; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 14px 12px; padding: 0 calc(var(--pad) + var(--sar)) 6px calc(var(--pad) + var(--sal)); }
+@media (min-width: 720px) {
+  .rail { grid-auto-columns: 156px; gap: 16px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 22px 16px; }
+}
+@media (min-width: 1100px) { .rail { grid-auto-columns: 172px; } .grid { grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); } }
+@media (min-width: 1500px) { .rail { grid-auto-columns: 184px; } }
+
+.card { display: block; text-align: left; width: 100%; }
+.card .poster { position: relative; aspect-ratio: 2 / 3; border-radius: var(--radius); overflow: hidden; background: var(--surface); box-shadow: 0 0 0 .5px rgba(255,255,255,.08) inset; }
+/* A hairline of light inside the artwork's edge, so a dark poster still reads as an object on the black page. */
+.card .poster::before { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1); pointer-events: none; }
+.card .poster img { width: 100%; height: 100%; object-fit: cover; }
+.card .poster .fallback { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 10px; font-weight: 700; color: var(--muted); background: linear-gradient(160deg, var(--raised), var(--surface)); }
+.card .poster .bar { position: absolute; left: 10px; right: 10px; bottom: 9px; z-index: 2; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255,255,255,.28); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.card .poster .bar i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.card.wide .poster::after { content: ''; position: absolute; inset: 55% 0 0; background: linear-gradient(transparent, rgba(0,0,0,.45)); pointer-events: none; }
+.card .poster .tag { position: absolute; top: 8px; left: 8px; }
+.card .name { margin-top: 8px; font-size: 13px; font-weight: 600; letter-spacing: var(--ls-body); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.card.wide .poster { aspect-ratio: 16 / 9; }
+.rail .card.wide { width: 100%; }
+.rail.wide { grid-auto-columns: 250px; }
+/* Coming up: the day it airs, big, bottom-left over a darkened backdrop. */
+.card.upcoming .poster img { filter: brightness(.62) saturate(.9); }
+.card.upcoming .poster::after { content: ''; position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, rgba(0,0,0,.7)); pointer-events: none; }
+.card.upcoming .up-when { position: absolute; left: 10px; bottom: 8px; z-index: 1; font-size: 20px; font-weight: 800; letter-spacing: -.02em; color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+@media (min-width: 720px) { .rail.wide { grid-auto-columns: 290px; } }
+@media (min-width: 1500px) { .rail.wide { grid-auto-columns: 320px; } }
+
+/* Skeletons: the shape of what is coming, so nothing jumps when it lands */
+.skel, .card .poster.skel { background: linear-gradient(100deg, var(--surface) 30%, var(--raised) 50%, var(--surface) 70%) 0 0 / 300% 100%; animation: skel 1.4s ease-in-out infinite; }
+@keyframes skel { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.skel-card { pointer-events: none; }
+.skel-line { height: 11px; border-radius: 6px; margin-top: 9px; width: 80%; }
+.skel-line.short { width: 45%; margin-top: 6px; }
+.skel-title { height: 17px; width: 180px; max-width: 50%; border-radius: 6px; }
+.rail.skel-rail { overflow: hidden; }
+
+/*
+ * Cards answer a mouse the tvOS way: the artwork rises, tilts toward the pointer and catches a highlight where it is
+ * (lib/tilt.ts feeds --rx, --ry, --mx, --my). The rail gets room to breathe so the lift and shadow are not clipped.
+ */
+.rail { padding-top: 14px; padding-bottom: 30px; margin-top: -14px; margin-bottom: -16px; }
+.card { border-radius: var(--radius); transition: transform var(--spring-bouncy-dur) var(--spring-bouncy); }
+.card .poster { transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), box-shadow var(--spring-smooth-dur) var(--spring-smooth); }
+.card .poster img { transition: filter .35s var(--ease); }
+.poster-shine { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; transition: opacity .3s ease; background: radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgba(255,255,255,.26), rgba(255,255,255,0) 58%); }
+.card .name { transition: color .2s; }
+.card:active { transform: scale(.96); transition: var(--press); }
+.card-play {
+  position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; background: rgba(0,0,0,.62); color: #fff;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; transform: scale(.8); pointer-events: none;
+  transition: opacity .25s var(--ease), transform .35s var(--ease);
+}
+.card-play svg { width: 20px; height: 20px; margin-left: 2px; }
+@media (hover: hover) {
+  .card:hover .poster { transform: perspective(900px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg)) scale(1.06); box-shadow: 0 24px 50px rgba(0,0,0,.65); transition: transform .2s ease-out, box-shadow .3s ease; }
+  .card:hover .poster-shine { opacity: 1; }
+  .card.wide:hover .poster img { filter: brightness(.8); }
+  .card:hover .card-play, .epc:hover .card-play { opacity: 1; transform: scale(1); }
+}
+
+/* The poster in flight between a card and the title page's backdrop (lib/zoom.ts). Never takes a tap. */
+.zoom-fly { position: fixed; left: 0; top: 0; z-index: 60; overflow: hidden; border-radius: var(--radius); pointer-events: none; background: var(--surface); box-shadow: 0 20px 50px rgba(0,0,0,.55); will-change: transform, width, height, opacity; }
+.zoom-fly img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; }
+.zoom-fly img.zf-back { object-position: center 20%; }

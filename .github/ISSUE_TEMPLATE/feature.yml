@@ -1,0 +1,11 @@
+name: Feature
+description: Something Kino should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What and why
+      description: The problem first, the proposed solution second.
+    validations:
+      required: true

@@ -1,0 +1,35 @@
+.magnet-body { padding: 0 calc(var(--pad) + var(--sar)) 24px calc(var(--pad) + var(--sal)); max-width: 760px; }
+.magnet-box { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 14px 74px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid transparent; transition: border-color .25s var(--ease), box-shadow .25s var(--ease); }
+.magnet-box:focus-within { border-color: rgba(255,255,255,.6); box-shadow: 0 0 0 4px rgba(255,255,255,.12); }
+.magnet-box.busy { opacity: .75; }
+.magnet-ico { position: absolute; left: 20px; top: 20px; width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,.16); color: var(--accent); }
+.magnet-box textarea { width: 100%; background: transparent; border: 0; outline: 0; resize: vertical; font: 15px/1.45 var(--font); color: var(--text); min-height: 72px; }
+.magnet-box textarea::placeholder { color: var(--muted); }
+.magnet-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.magnet-hint { color: var(--muted); font-size: 13px; margin: 12px 4px 0; }
+.magnet-files { margin-top: 26px; }
+.magnet-files h2, .magnet-recent h2 { font-size: 18px; }
+/* Release names are one dotted word: let the torrent's name break anywhere instead of running off the screen. */
+.magnet-files h2 { overflow-wrap: anywhere; }
+/* Raw file names in the main list stay on one line with an ellipsis, like a source's release name;
+   in a season pack the episode label in front keeps them apart. */
+.magnet-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.magnet-files .src-line1 { flex-wrap: nowrap; }
+.magnet-files .magnet-name { flex: 1 1 0; min-width: 0; }
+.magnet-ep { flex: none; }
+/* The other files are a side list: names wrap in full. */
+.magnet-others { margin-top: 14px; color: var(--muted); font-size: 13px; }
+.magnet-others summary { cursor: pointer; padding: 6px 0; }
+.magnet-others ul { list-style: none; margin: 4px 0 0; padding: 0; }
+.magnet-others li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 4px 0; }
+.magnet-other-name { min-width: 0; overflow-wrap: anywhere; }
+.magnet-other-size { color: var(--muted); flex: none; }
+.magnet-recent { margin-top: 28px; }
+.magnet-recent ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.magnet-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px 10px; border-radius: 14px; transition: background .25s var(--ease); }
+.magnet-row-text { min-width: 0; display: flex; flex-direction: column; }
+.magnet-row-text small { color: var(--muted); font-size: 12px; }
+/* Recent is the only place a watched name shows: it wraps in full. */
+.magnet-recent .magnet-name { white-space: normal; overflow-wrap: anywhere; }
+@media (hover: hover) { .magnet-row:hover { background: var(--surface); } .magnet-row:hover .src-play { background: var(--accent); color: var(--accent-ink); } }
+@media (max-width: 719px) { .magnet-box { padding-left: 18px; } .magnet-ico { display: none; } }

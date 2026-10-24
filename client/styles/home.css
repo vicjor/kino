@@ -1,0 +1,184 @@
+/* ============================ Home spotlight ============================== */
+/*
+ * The hero: artwork edge to edge (under the status bar on a phone, under the glass sidebar on desktop) but short, so the
+ * first rails show without scrolling. Its words sit on a progressive blur that darkens only behind them, readable on
+ * any picture, and the rails rise over its foot.
+ */
+.home { position: relative; }
+.spot {
+  position: relative; z-index: 0; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; margin: 0 0 -28px; overflow: hidden;
+  min-height: min(96vw, 420px); padding-top: calc(var(--sat) + 72px);
+}
+/* The artwork itself, set as --art: it dissolves at the foot into its own ambient light instead of ending on black. */
+.spot::before {
+  content: ''; position: absolute; inset: 0; z-index: -2; pointer-events: none; background: var(--art, none) center 22% / cover no-repeat;
+  -webkit-mask: linear-gradient(#000 52%, rgba(0,0,0,.55) 78%, transparent); mask: linear-gradient(#000 52%, rgba(0,0,0,.55) 78%, transparent);
+}
+.spot-fade {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,.35) 0, rgba(0,0,0,.5) 60px, rgba(0,0,0,.32) 58%, rgba(0,0,0,0) 85%);
+  backdrop-filter: blur(22px) saturate(1.3); -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  /* Blur only where the words are: it rises from nothing at the foot (no seam with the light below) and fades out above. */
+  -webkit-mask: linear-gradient(to top, transparent 0, #000 72px, #000 45%, rgba(0,0,0,.5) 65%, transparent 88%); mask: linear-gradient(to top, transparent 0, #000 72px, #000 45%, rgba(0,0,0,.5) 65%, transparent 88%);
+}
+/* A shade at the top only, for the header's glass buttons. */
+.spot::after { content: ''; position: absolute; inset: 0 0 auto; height: 100px; z-index: -1; background: linear-gradient(rgba(0,0,0,.4), transparent); pointer-events: none; }
+.spot-body { position: relative; padding: 0 calc(var(--pad) + var(--sar)) 40px calc(var(--pad) + var(--sal)); display: flex; flex-direction: column; gap: 5px; }
+.spot-kicker { font-size: 11.5px; font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; color: rgba(255,255,255,.75); }
+.spot-title { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.02; text-shadow: 0 1px 16px rgba(0,0,0,.45); text-wrap: balance; }
+.spot-sub { color: rgba(255,255,255,.86); font-size: 14px; font-weight: 600; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
+.spot-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,.25); max-width: 240px; overflow: hidden; margin-top: 3px; }
+.spot-bar i { display: block; height: 100%; background: #fff; border-radius: 2px; }
+.spot-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.spot .btn.big { min-height: 46px; font-size: 15px; }
+.spot .btn.glass { min-height: 46px; padding: 0 16px; font-size: 15px; }
+/* Rails after the hero paint over its fading foot. */
+.home > .section, .home > .home-foot { position: relative; z-index: 1; }
+@media (max-width: 719.98px) {
+  /* Phone: one row. Play takes the room, the rest are glass circles (their names stay for screen readers). */
+  .spot-actions { flex-wrap: nowrap; }
+  .spot-actions .btn.primary { flex: 1 1 auto; justify-content: center; }
+  .spot-actions .btn.glass { flex: none; width: 46px; padding: 0; justify-content: center; }
+  .spot-actions .btn.glass .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .spot-close { display: none; }
+  /* The header floats over the artwork, its buttons glass circles. */
+  .home:has(> .spot, > .featured) > .home-head { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
+  .home:has(> .spot, > .featured) > .home-head .ghost-btn { color: #fff; background: rgba(0,0,0,.25); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 0 0 1px rgba(255,255,255,.07); width: 40px; height: 40px; }
+  .home:has(> .spot, > .featured) > .home-head .ghost-btn svg { width: 20px; height: 20px; }
+}
+@media (min-width: 720px) {
+  .spot { min-height: min(56vh, 36vw); max-height: 600px; padding-top: 60px; margin-bottom: -36px; }
+  .spot-fade {
+    background: linear-gradient(to right, rgba(0,0,0,.72) 0%, rgba(0,0,0,.4) 35%, rgba(0,0,0,0) 62%);
+    -webkit-mask: linear-gradient(to right, #000 40%, transparent 70%), linear-gradient(to top, transparent 0, #000 90px); -webkit-mask-composite: source-in;
+    mask: linear-gradient(to right, #000 40%, transparent 70%), linear-gradient(to top, transparent 0, #000 90px); mask-composite: intersect;
+  }
+  .spot-body { max-width: 700px; padding: 0 var(--pad) 60px calc(var(--pad) + 4px); gap: 7px; }
+  .spot-title { font-size: clamp(40px, 3.8vw, 58px); letter-spacing: -0.034em; }
+  .spot-sub { font-size: 15px; }
+  .spot-bar { max-width: 300px; }
+  .spot-hide { display: none; }
+}
+
+.home-foot { padding: 8px calc(var(--pad) + var(--sar)) 24px calc(var(--pad) + var(--sal)); display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Spotlight close: a small glass circle in the top corner, out of the artwork's focal area. */
+.spot-close { position: absolute; top: calc(var(--sat) + 70px); right: calc(var(--pad) + var(--sar)); z-index: 2; width: 32px; height: 32px; background: rgba(0,0,0,.28); color: #fff; backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px rgba(255,255,255,.08); }
+.spot-close svg { width: 16px; height: 16px; }
+@media (min-width: 720px) { .spot-close { top: calc(var(--sat) + 20px); right: calc(var(--sar) + 20px); } }
+@media (hover: hover) { .spot-close { opacity: .7; } .spot:hover .spot-close, .spot-close:focus-visible { opacity: 1; } .spot-close:hover { background: rgba(0,0,0,.6); } }
+
+/* Cards with a remove control in the corner (Continue watching, Downloads) */
+.rm-card { position: relative; }
+.rm-btn { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; background: rgba(0,0,0,.7); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.rm-btn svg { width: 16px; height: 16px; }
+@media (hover: hover) { .rm-btn { opacity: 0; transition: opacity .2s, background .25s var(--ease), color .2s, transform .25s var(--ease); } .rm-card:hover .rm-btn, .rm-btn:focus-visible { opacity: 1; } .rm-btn:hover { background: rgba(0,0,0,.9); } }
+
+/* New episodes stacked per show. Front card is real, the rest sit behind it and fan out to the right when open. */
+.home .rail.wide { padding-top: 26px; margin-top: -26px; }
+.home .rail .card.wide { width: 100%; }
+.stack { position: relative; --gap: 16px; }
+/* `.stack` in front so these beat `.card { position; transition }` whatever order the files load in. */
+.stack .stack-item { position: absolute; left: 0; top: 0; width: 100%; z-index: calc(20 - var(--i)); transform-origin: top center; transition: transform .45s var(--ease), opacity .3s var(--ease); }
+.stack-item:first-child { position: relative; }
+.stack .stack-item .name, .stack .stack-item .sub { transition: opacity .25s var(--ease); }
+.stack:not(.open) .stack-item:not(:first-child) { transform: translateY(calc(var(--i) * -9px)) scale(calc(1 - var(--i) * .055)); pointer-events: none; }
+.stack:not(.open) .stack-item:not(:first-child) .poster { box-shadow: inset 0 1px 0 rgba(255,255,255,.14); }
+.stack:not(.open) .stack-item:not(:first-child) .name, .stack:not(.open) .stack-item:not(:first-child) .sub, .stack:not(.open) .stack-item:not(:first-child) .tag { opacity: 0; }
+.stack:not(.open) .stack-item:nth-child(n+4) { opacity: 0; }
+.stack:not(.open) .stack-item:not(:first-child) .poster img { filter: brightness(.45) saturate(.8); }
+.stack.open { z-index: 30; }
+.stack.open .stack-item { transform: translateX(calc(var(--i) * (100% + var(--gap)))); transition-delay: calc(var(--i) * 35ms); }
+@media (hover: hover) {
+  .stack.open .stack-item:hover { transition-delay: 0s; }
+}
+.stack-badge {
+  position: absolute; top: 8px; right: 8px; z-index: 40; height: 26px; padding: 0 10px; border-radius: 13px; font-size: 12px; font-weight: 700;
+  background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 14px rgba(0,0,0,.4); transition: transform .3s var(--ease);
+}
+.stack-badge:active { transform: scale(.94); }
+.stack.open .stack-badge { background: var(--raised); color: var(--text); }
+
+/*
+ * Continue on TV, bottom-right of a Continue Watching card's artwork, above the progress bar. It sits beside the card (a
+ * button cannot hold a button), so it is pinned to the 16:9 poster through the width: a percentage margin-top is a share
+ * of the containing block's width, which is the poster's. Measured from the bottom, a two-line name pushed it off the art.
+ */
+.card-cast { position: absolute; right: 6px; top: 0; margin-top: calc(100% * 9 / 16 - 52px); width: 32px; height: 32px; background: rgba(0,0,0,.7); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.card-cast svg { width: 17px; height: 17px; }
+@media (hover: hover) { .card-cast { opacity: 0; transition: opacity .2s, background .25s var(--ease), color .2s, transform .25s var(--ease); } .rm-card:hover .card-cast, .card-cast:focus-visible { opacity: 1; } .card-cast:hover { background: var(--accent); color: var(--accent-ink); } }
+
+
+/* ============================ Hero as player (desktop, while casting) ===== */
+.spot-kicker.live { display: flex; align-items: center; gap: 8px; }
+.spot-kicker.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); animation: onair 1.6s ease-in-out infinite; }
+.spot-scrub { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; max-width: 640px; margin-top: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* A 44 px tall input for the finger, the negative margin keeps the row its height; the 4 px bar is drawn on the track. */
+.spot-scrub input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: -20px 0; background: transparent; outline: 0; cursor: pointer; }
+.spot-scrub input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(var(--accent), var(--accent)) 0 0 / var(--p, 0%) 100% no-repeat, rgba(255,255,255,.2); }
+.spot-scrub input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: linear-gradient(var(--accent), var(--accent)) 0 0 / var(--p, 0%) 100% no-repeat, rgba(255,255,255,.2); }
+.spot-scrub input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.6); transition: transform .2s; }
+.spot-scrub input[type=range]:active::-webkit-slider-thumb { transform: scale(1.3); }
+.spot-scrub input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: #fff; }
+/* Keyboard focus: the accent ring of :focus-visible, drawn round the thumb (an outline would box the whole hit area). */
+.spot-scrub input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 1px 4px rgba(0,0,0,.6), 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+.spot-scrub input[type=range]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+.spot-scrub input:disabled { opacity: .5; cursor: default; }
+.spot-actions .btn.round { width: 46px; padding: 0; justify-content: center; }
+.spot-actions .btn.round svg { width: 18px; height: 18px; }
+.spot-actions .btn.stop { color: var(--danger); }
+.spot.playing .spot-body { max-width: 940px; }
+.spot.playing { cursor: pointer; }
+.spot.playing .spot-scrub, .spot.playing .spot-actions { cursor: default; }
+
+/* Keys under the casting hero, same row the Cast Center shows, so the TV's shortcuts teach themselves here too. */
+.spot-keys { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 14px; color: rgba(255,255,255,.7); font-size: 12px; }
+.spot-keys > span { display: inline-flex; align-items: center; gap: 5px; }
+.spot-keys .keycap { height: 20px; min-width: 20px; font-size: 11px; opacity: .85; }
+.spot-keys .keycap + .keycap { margin-left: -2px; }
+.spot-keys-all { display: inline-flex; align-items: center; gap: 5px; color: rgba(255,255,255,.85); font-size: 12px; padding: 4px 8px; border-radius: 8px; transition: background .18s; }
+/* The TV's keyboard confirmations, centred on the screen like the player's. */
+.cast-hud .hud { position: fixed; z-index: 60; }
+@media (hover: hover) {
+  .spot-keys-all:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .spot-actions .btn[data-key], .npbar .iconbtn[data-key] { position: relative; }
+  .spot-actions .btn[data-key]::after, .npbar .iconbtn[data-key]::after {
+    content: attr(data-hint) "  ·  " attr(data-key); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translate(-50%, 4px); z-index: 5;
+    white-space: nowrap; font: 500 12px/1 var(--font); color: var(--text); background: rgba(36,36,40,.94); border: 1px solid rgba(255,255,255,.1);
+    padding: 6px 9px; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .18s var(--ease) .4s, transform .18s var(--ease) .4s;
+  }
+  .spot-actions .btn[data-key]:hover::after, .npbar .iconbtn[data-key]:hover::after { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Wide screens: the hero runs up under the floating bar, so the bar's glass has the artwork to refract. */
+@media (min-width: 900px) {
+  .app.has-dock .home > .home-head + .spot { margin-top: calc(-1 * var(--nav-h)); padding-top: calc(var(--nav-h) + 40px); }
+  .app.has-dock .home > .home-head + .featured { margin-top: calc(-1 * var(--nav-h)); }
+  .app.has-dock .home > .home-head + .featured .spot { padding-top: calc(var(--nav-h) + 40px); }
+}
+
+/* ============================ Featured carousel (Featured.tsx) ======================== */
+/* The section keeps the hero's place on the page; each slide is a hero of its own, side by side on a track a spring moves. */
+.featured { position: relative; z-index: 0; margin: 0 0 -28px; overflow: hidden; outline: none; }
+.featured-track { display: flex; touch-action: pan-y; will-change: transform; cursor: grab; }
+.featured-track:active { cursor: grabbing; }
+.featured .spot { flex: 0 0 100%; margin: 0; user-select: none; -webkit-user-select: none; }
+.featured .spot-body { padding-bottom: 60px; }
+.featured .spot-plot { max-width: 52ch; color: rgba(255,255,255,.8); font-size: 14px; line-height: 1.4; text-shadow: 0 1px 8px rgba(0,0,0,.4); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.featured .spot-title { font-size: 32px; }
+/* Dots: the one on show is a pill that fills while it waits to move on, as on the Apple TV. */
+.featured-dots { position: absolute; left: 0; right: 0; bottom: 36px; z-index: 2; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
+.featured-dot { position: relative; width: 7px; height: 7px; padding: 0; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,.35); pointer-events: auto; transition: width var(--spring-snappy-dur) var(--spring-snappy), background .2s; }
+.featured-dot::before { content: ''; position: absolute; inset: -10px -4px; }
+.featured-dot.on { width: 26px; background: rgba(255,255,255,.3); }
+.featured-dot i { position: absolute; inset: 0; transform-origin: left; background: #fff; animation: featured-wait linear both; }
+.featured.still .featured-dot i { animation-play-state: paused; }
+@keyframes featured-wait { from { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .featured-dot i { animation: none !important; } }
+@media (min-width: 720px) {
+  .featured { margin-bottom: -36px; }
+  .featured .spot-body { padding-bottom: 68px; }
+  .featured .spot-title { font-size: clamp(40px, 3.8vw, 58px); }
+  .featured .spot-plot { font-size: 15px; }
+  .featured-dots { left: auto; right: calc(var(--pad) + var(--sar)); bottom: 72px; justify-content: flex-end; }
+}

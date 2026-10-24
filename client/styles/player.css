@@ -1,0 +1,217 @@
+/*
+ * The player (Player.tsx, TvRemote.tsx). One look for both places a film can play: glass over the picture here, glass
+ * over the artwork when the picture is on the TV. Laid out like the TV app: close and the window controls top left,
+ * where it plays and the volume top right, the transport in the middle, the title, timeline and pills along the foot.
+ */
+.player { position: fixed; inset: 0; background: #000; z-index: 30; overflow: hidden; touch-action: none; transform-origin: 50% 0; }
+/* The video box is the picture's own shape, centred: the browser draws subtitles at the foot of the box, so on a phone
+   held upright they sit under the picture, not at the bottom of the screen. Where the screen is wider than the film
+   the box is the full height and the picture is pillarboxed inside it, as before. */
+.player video { position: absolute; inset: 0; margin: auto; width: 100%; height: auto; max-height: 100%; object-fit: contain; background: #000; }
+.player video::cue { background: rgba(0,0,0,.6); color: #fff; font-family: var(--font); }
+.player.hide-cursor { cursor: none; }
+
+/* ---- glass over a picture: circles, pills, the volume capsule ---- */
+.pc-circle, .pc-pill, .pc-vol, .playon-btn, .pc-skip, .pc-play {
+  color: #fff; background: rgba(255,255,255,.13); backdrop-filter: blur(22px) saturate(1.7); -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(255,255,255,.07), 0 6px 24px rgba(0,0,0,.18);
+}
+.pc-circle, .pc-pill, .playon-btn, .pc-skip, .pc-play { transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), background .2s, color .2s; }
+.pc-circle:active, .pc-pill:active, .playon-btn:active, .pc-skip:active, .pc-play:active { transform: scale(.88); background: rgba(255,255,255,.24); transition: var(--press), background .1s; }
+@media (hover: hover) { .pc-circle:hover, .pc-pill:hover, .playon-btn:hover, .pc-skip:hover, .pc-play:hover { background: rgba(255,255,255,.22); } }
+.pc-circle { width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.pc-circle svg { width: 20px; height: 20px; }
+.pc-circle.on { background: #fff; color: #000; }
+.pc-pill { height: 40px; padding: 0 16px 0 13px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; flex: none; font-size: 14px; font-weight: 600; letter-spacing: var(--ls-body); white-space: nowrap; }
+.pc-pill svg { width: 18px; height: 18px; flex: none; }
+.pc-pill.on { background: #fff; color: #000; }
+.pc-pill.strong { background: rgba(255,255,255,.94); color: #000; }
+@media (hover: hover) { .pc-pill.on:hover, .pc-pill.strong:hover { background: #fff; } }
+.pc-pill.danger { color: var(--danger-text); }
+.pc-pill:disabled { opacity: .45; }
+.pc-pill.keys-btn { width: 40px; padding: 0; justify-content: center; }
+.pc-vol { display: flex; align-items: center; gap: 2px; height: 44px; padding: 0 16px 0 4px; border-radius: 22px; }
+.pc-vol .level { width: 104px; }
+.pc-mute { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.pc-mute svg { width: 19px; height: 19px; }
+
+/* ---- the chrome ---- */
+.controls {
+  position: absolute; inset: 0; isolation: isolate; display: flex; flex-direction: column; justify-content: space-between;
+  padding: calc(var(--sat) + 14px) calc(var(--sar) + 18px) calc(var(--sab) + 12px) calc(var(--sal) + 18px);
+}
+/* Two eased shades, top and foot, with no visible edge; the picture between them is left alone. */
+.controls::before, .controls::after { content: ''; position: absolute; left: 0; right: 0; z-index: -1; pointer-events: none; transition: opacity .32s ease; }
+.controls::before { top: 0; height: 170px; background: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.3) 35%, rgba(0,0,0,.1) 70%, transparent); }
+.controls::after { bottom: 0; height: min(58%, 380px); background: linear-gradient(transparent, rgba(0,0,0,.14) 22%, rgba(0,0,0,.45) 55%, rgba(0,0,0,.74)); }
+.pc-top, .pc-mid, .pc-bottom { transition: opacity .28s ease, transform var(--spring-smooth-dur) var(--spring-smooth); }
+/* Stepping aside: the top lifts away, the foot sinks, the middle settles back, all fading as one. */
+.ctl-layer.hidden .controls { pointer-events: none; }
+.ctl-layer.hidden .controls::before, .ctl-layer.hidden .controls::after { opacity: 0; }
+.ctl-layer.hidden .pc-top { opacity: 0; transform: translateY(-10px); }
+.ctl-layer.hidden .pc-mid { opacity: 0; transform: scale(.92); }
+.ctl-layer.hidden .pc-bottom { opacity: 0; transform: translateY(14px); }
+.pc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+/* Kino.app on a Mac: the top row starts after the traffic lights (global.css). */
+@media (min-width: 900px) { .mac-app .pc-top { padding-left: calc(var(--lights) - var(--sal) - 18px); } }
+.pc-group { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pc-mid { position: absolute; left: 50%; top: 50%; translate: -50% -50%; display: flex; align-items: center; gap: clamp(30px, 7vw, 72px); pointer-events: none; }
+.pc-mid > * { pointer-events: auto; }
+.pc-skip, .pc-play { position: relative; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.pc-skip { width: 62px; height: 62px; }
+.pc-play { width: 86px; height: 86px; background: rgba(255,255,255,.18); }
+/* Play and pause trade places: one shrinks away as the other grows in, on the same spring as the press. */
+.pc-glyph { position: absolute; display: flex; transition: opacity .18s ease, transform var(--spring-bouncy-dur) var(--spring-bouncy); }
+.pc-glyph.off { opacity: 0; transform: scale(.4); }
+.pc-bottom { display: flex; flex-direction: column; gap: 4px; }
+.pc-info { display: flex; flex-direction: column; gap: 2px; max-width: min(760px, 100%); margin-bottom: 6px; text-shadow: 0 1px 16px rgba(0,0,0,.3); }
+.pc-kicker { font-size: 12px; font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; color: rgba(255,255,255,.72); }
+.pc-title { font-size: clamp(20px, 2.3vw, 30px); font-weight: 700; letter-spacing: var(--ls-title); line-height: 1.12; overflow-wrap: anywhere; }
+.pc-sub { font-size: 13px; font-weight: 500; color: rgba(255,255,255,.66); }
+.pc-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
+.pc-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.pc-pills.end { justify-content: flex-end; }
+/* A phone keeps the icons and drops the words; the names are still the buttons' labels. */
+@media (max-width: 719px) {
+  .controls { padding-left: calc(var(--sal) + 14px); padding-right: calc(var(--sar) + 14px); }
+  .controls .pc-pill { width: 42px; height: 42px; padding: 0; justify-content: center; border-radius: 21px; }
+  .controls .pc-pill .lbl { display: none; }
+  .pc-pills { gap: 6px; flex-wrap: nowrap; }
+  .pc-skip { width: 56px; height: 56px; }
+  .pc-play { width: 76px; height: 76px; }
+  .pc-group { gap: 8px; }
+}
+@media (max-width: 380px) { .pc-group .pc-circle { width: 40px; height: 40px; } .controls .pc-pill { width: 38px; height: 38px; } }
+
+/* ---- where it plays (PlayOn.tsx) ---- */
+.playon { position: relative; flex: none; }
+.playon-btn { height: 44px; min-width: 44px; padding: 0 12px; border-radius: 22px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 600; }
+.playon-btn svg { width: 20px; height: 20px; flex: none; }
+/* On a TV: the button fills white with the TV's name, the way AirPlay lights up when it is routed. */
+.playon-btn.routed { background: #fff; color: #000; padding: 0 16px 0 13px; }
+@media (hover: hover) { .playon-btn.routed:hover { background: #fff; } }
+.playon-name { max-width: 30vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.playon-menu {
+  position: absolute; z-index: 20; top: calc(100% + 10px); right: 0; width: min(340px, calc(100vw - 28px)); padding: 8px;
+  border-radius: 24px; background: rgba(30,30,32,.78); backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  border: 1px solid rgba(255,255,255,.1); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 24px 70px rgba(0,0,0,.55);
+  transform-origin: calc(100% - 22px) -10px; animation: playon-in .42s var(--ease) both; text-align: left; cursor: default;
+}
+.playon-menu.out { animation: playon-out .18s var(--ease-exit) both; pointer-events: none; }
+/* It materialises out of its button: grows from the corner, comes into focus. */
+@keyframes playon-in { from { opacity: 0; transform: scale(.6); filter: blur(10px); } }
+@keyframes playon-out { to { opacity: 0; transform: scale(.85); filter: blur(6px); } }
+.playon-head { padding: 8px 12px 6px; font-size: 12px; font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.playon-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 16px; color: #fff; text-align: left; transition: background .15s; }
+.playon-row:active { background: rgba(255,255,255,.12); }
+@media (hover: hover) { .playon-row:not(:disabled):hover { background: rgba(255,255,255,.08); } }
+.playon-row:disabled { opacity: .4; }
+.playon-row.skeleton { height: 56px; background: rgba(255,255,255,.05); }
+.playon-ico { width: 38px; height: 38px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex: none; background: rgba(255,255,255,.1); }
+.playon-ico svg { width: 20px; height: 20px; }
+.playon-row.on .playon-ico { background: #fff; color: #000; }
+.playon-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.playon-text strong { font-size: 15px; font-weight: 600; letter-spacing: var(--ls-body); }
+.playon-text small { font-size: 12.5px; color: var(--muted); }
+.playon-row > svg { width: 18px; height: 18px; flex: none; }
+.playon-empty { padding: 6px 12px 10px; font-size: 13px; color: var(--muted); }
+.playon-switch { position: relative; width: 44px; height: 26px; border-radius: 13px; background: rgba(120,120,128,.4); flex: none; transition: background .25s; }
+.playon-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.3); transition: transform var(--spring-bouncy-dur) var(--spring-bouncy); }
+.playon-switch.on { background: var(--ok); }
+.playon-switch.on::after { transform: translateX(18px); }
+
+/* ---- the season's episodes over the foot (EpisodesShelf.tsx) ---- */
+.eps-dim { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.35); animation: eps-dim-in .3s ease both; }
+.eps-dim.out { animation: eps-dim-out .26s ease both; }
+@keyframes eps-dim-in { from { opacity: 0; } }
+@keyframes eps-dim-out { to { opacity: 0; } }
+.eps-shelf {
+  position: fixed; z-index: 41; left: 0; right: 0; bottom: 0; padding: 16px 0 calc(var(--sab) + 16px);
+  background: linear-gradient(rgba(16,16,18,.55), rgba(10,10,12,.92) 40%); backdrop-filter: blur(30px) saturate(1.5); -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  border-top: 1px solid rgba(255,255,255,.08); border-radius: 26px 26px 0 0; box-shadow: 0 -20px 60px rgba(0,0,0,.4);
+  animation: eps-up var(--spring-smooth-dur) var(--spring-smooth) both;
+}
+.eps-shelf.out { animation: eps-down .26s var(--ease-exit) both; }
+@keyframes eps-up { from { transform: translateY(100%); } }
+@keyframes eps-down { to { transform: translateY(100%); } }
+.eps-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 calc(var(--sar) + 20px) 8px calc(var(--sal) + 20px); }
+.eps-head strong { font-size: 19px; font-weight: 700; letter-spacing: var(--ls-head); }
+.eps-shelf .episodes { margin: 0; }
+.eps-shelf .ep-head { padding-left: calc(var(--sal) + 20px); padding-right: calc(var(--sar) + 20px); }
+.eps-shelf .eprail { padding-left: calc(var(--sal) + 20px); padding-right: calc(var(--sar) + 20px); scroll-padding-inline: calc(var(--sal) + 20px); }
+
+@media (prefers-reduced-transparency: reduce) {
+  .pc-circle, .pc-pill:not(.on):not(.strong), .pc-vol, .playon-btn:not(.routed), .pc-skip, .pc-play { background: rgba(44,44,48,.96); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .playon-menu, .eps-shelf { background: rgba(28,28,30,.99); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  .pc-circle, .pc-pill, .pc-vol, .playon-btn, .pc-skip, .pc-play { box-shadow: inset 0 0 0 1px rgba(255,255,255,.55); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .playon-menu, .playon-menu.out, .eps-shelf, .eps-shelf.out { animation-name: eps-dim-in; animation-duration: .2s; }
+  .playon-menu.out, .eps-shelf.out { animation-name: eps-dim-out; }
+  .ctl-layer.hidden .pc-top, .ctl-layer.hidden .pc-mid, .ctl-layer.hidden .pc-bottom { transform: none; }
+}
+
+.tstats { position: absolute; top: calc(var(--sat) + 64px); right: calc(var(--sar) + 14px); display: flex; gap: 10px; font-size: 12px; color: rgba(255,255,255,.75); background: rgba(0,0,0,.45); padding: 4px 10px; border-radius: 12px; pointer-events: none; }
+.tstats span { font-variant-numeric: tabular-nums; }
+.pcenter { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; pointer-events: none; }
+.pcenter .spinner { width: 44px; height: 44px; }
+.pcenter .msg { color: rgba(255,255,255,.78); font-size: 14px; font-weight: 500; }
+/* Connecting: the artwork behind, frosted, so the wait already looks like the film and not a black hole. */
+.pcenter.loading { isolation: isolate; overflow: hidden; background: #000; }
+.pcenter.loading::before { content: ''; position: absolute; inset: -12%; z-index: -1; background: var(--art, none) center / cover no-repeat; filter: blur(48px) saturate(1.6) brightness(.5); transform: scale(1.1); }
+.pcenter.loading .msg:not(.dim) { font-size: 16px; font-weight: 600; color: #fff; }
+.perror { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; padding: 24px; text-align: center; background: rgba(0,0,0,.7); }
+.perror p { max-width: 40ch; color: rgba(255,255,255,.8); }
+.pnotice {
+  position: absolute; left: 50%; bottom: calc(var(--sab) + 40px); transform: translateX(-50%); z-index: 3; transition: bottom .3s var(--ease);
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 16px; border-radius: 22px; max-width: calc(100% - 32px);
+  background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow); font-size: 14px; font-weight: 500; white-space: nowrap;
+  animation: pnotice-in .38s var(--ease) both;
+}
+.pnotice .btn.small { min-height: 32px; padding: 0 12px; }
+.pnotice-x { width: 28px; height: 28px; margin-left: -4px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none; color: rgba(255,255,255,.6); transition: background .18s, color .18s, transform .18s var(--ease); }
+.pnotice-x svg { width: 14px; height: 14px; }
+.pnotice-x:hover { background: rgba(255,255,255,.12); color: var(--text); }
+.pnotice-x:active { transform: scale(.88); }
+@keyframes pnotice-in { from { opacity: 0; transform: translate(-50%, 12px); } }
+.countdown { position: absolute; z-index: 3; right: calc(var(--sar) + 18px); bottom: calc(var(--sab) + 28px); transition: bottom .3s var(--ease); display: flex; gap: 12px; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 20px; padding: 12px; max-width: min(420px, calc(100% - 32px)); box-shadow: var(--glass-shadow); }
+.countdown img { width: 120px; aspect-ratio: 16/9; object-fit: cover; border-radius: 10px; }
+.cd-label { color: var(--muted); font-size: 12px; }
+.cd-title { font-weight: 600; margin: 2px 0 8px; }
+.cd-actions { display: flex; gap: 8px; }
+.sub-tools { display: flex; flex-direction: column; gap: 8px; padding-bottom: 10px; }
+.sub-tool { display: flex; align-items: center; gap: 10px; }
+.sub-tool span { color: var(--muted); font-size: 13px; width: 44px; }
+.sub-tool strong { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+.sub-group h3 { font-size: 13px; color: var(--muted); font-weight: 600; padding: 12px 0 2px; }
+
+.spinner.sm { width: 16px; height: 16px; border-width: 2px; display: inline-block; vertical-align: middle; }
+
+.stall { display: flex; flex-direction: column; gap: 14px; padding-bottom: 6px; }
+.stall-reason { display: flex; gap: 12px; align-items: flex-start; }
+.stall-reason p { line-height: 1.4; }
+.stall-reason .hint { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.stall-ico { width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,.16); color: var(--accent); flex: none; }
+.stall-ico svg { width: 20px; height: 20px; }
+.stall-actions { display: flex; flex-direction: column; gap: 8px; }
+.stall-actions .btn { justify-content: center; }
+.srcs-reason { color: var(--warn); }
+.srcs-current { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 2px 0 8px; flex-wrap: wrap; }
+/* Skip intro: low in the corner while the controls are away, above the seek bar when they are up. */
+.player .skip-intro { position: absolute; z-index: 3; right: calc(var(--sar) + 20px); bottom: calc(var(--sab) + 36px); transition: bottom .25s var(--ease), background .18s, border-color .18s, transform .18s var(--ease); }
+.player .skip-intro.lifted { bottom: calc(var(--sab) + 200px); }
+/* The controls are up (the cursor shows): what floats over the foot steps up above the title and the timeline. */
+.player:not(.hide-cursor) .countdown, .player:not(.hide-cursor) .pnotice { bottom: calc(var(--sab) + 200px); }
+.player[data-rotated] .skip-intro { right: calc(var(--sab) + 20px); bottom: 36px; }
+.player[data-rotated] .skip-intro.lifted { bottom: 200px; }
+/* "The TV is on": the Cast button pulses for a few seconds instead of a banner over the film. */
+.cast-pulse { position: relative; color: var(--accent); }
+.cast-pulse::before, .cast-pulse::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; border: 2px solid var(--accent); pointer-events: none; animation: cast-ring 1.8s var(--ease) infinite; }
+.cast-pulse::after { animation-delay: .9s; }
+@keyframes cast-ring { from { transform: scale(.7); opacity: .9; } to { transform: scale(1.55); opacity: 0; } }
+.cast-ghost { position: absolute; z-index: 2; top: calc(var(--sat) + 14px); right: calc(var(--sar) + 18px); animation: cast-ghost 6s var(--ease) both; }
+@keyframes cast-ghost { 0% { opacity: 0; transform: scale(.8); } 8%, 88% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cast-pulse::before, .cast-pulse::after { animation: none; opacity: .6; } }

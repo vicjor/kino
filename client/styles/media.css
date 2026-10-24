@@ -1,0 +1,44 @@
+/*
+ * The two media sliders (Scrubber.tsx, LevelSlider.tsx), shared by the player, the TV remote and the volume capsule.
+ * Neither has a thumb: a filled capsule that thickens under the finger, as iOS draws them. The hit area is taller than
+ * what you see, and the track grows in place (its height, not a stretched transform, so the round ends stay round).
+ */
+.scrub { position: relative; user-select: none; -webkit-user-select: none; }
+.scrub-bar { position: relative; height: 30px; display: flex; align-items: center; cursor: pointer; touch-action: none; outline-offset: 4px; border-radius: 8px; }
+.scrub-track {
+  position: relative; flex: 1; height: 6px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.22);
+  transition: height var(--spring-snappy-dur) var(--spring-snappy);
+}
+.scrub-buf { position: absolute; top: 0; bottom: 0; background: rgba(255,255,255,.2); }
+.scrub-played { position: absolute; left: 0; top: 0; bottom: 0; background: #fff; border-radius: 0 99px 99px 0; }
+.scrub.active .scrub-track { height: 12px; }
+@media (hover: hover) { .scrub-bar:hover .scrub-track { height: 10px; } }
+.scrub.off .scrub-bar { cursor: default; }
+.scrub.off .scrub-track { opacity: .5; }
+/* The time under the finger, kept on screen at either end. */
+.scrub-bubble {
+  position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); pointer-events: none; white-space: nowrap;
+  padding: 4px 10px; border-radius: 10px; font: 600 13px/1.2 var(--font); font-variant-numeric: tabular-nums; color: #000; background: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
+}
+.scrub-bubble.hover { color: #fff; background: rgba(30,30,32,.82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.scrub-times {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -2px;
+  font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .01em; color: rgba(255,255,255,.66);
+}
+.scrub.active .scrub-times > span:first-child { color: #fff; }
+.scrub-speed { color: #fff; font-size: 12px; animation: scrub-speed-in .2s var(--ease) both; }
+@keyframes scrub-speed-in { from { opacity: 0; transform: translateY(3px); } }
+/* Marks: where you resumed from, where a jump back started. Tap to go there. */
+.scrub .mark { position: absolute; top: 5px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 2; }
+.scrub .mark::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px rgba(0,0,0,.55); transition: transform .25s var(--ease); }
+.scrub .mark:hover::before, .scrub .mark:active::before { transform: scale(1.35); }
+.scrub .mark-label { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: rgba(0,0,0,.8); padding: 3px 8px; border-radius: 6px; font-size: 12px; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.scrub .mark:hover .mark-label, .scrub .mark:focus-visible .mark-label { opacity: 1; }
+
+.level { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.level-bar { position: relative; flex: 1; min-width: 60px; height: 28px; display: flex; align-items: center; cursor: pointer; touch-action: none; outline-offset: 4px; border-radius: 8px; }
+.level-track { position: relative; flex: 1; height: 6px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.22); transition: height var(--spring-snappy-dur) var(--spring-snappy); }
+.level-track i { position: absolute; left: 0; top: 0; bottom: 0; background: #fff; }
+.level.active .level-track { height: 12px; }
+@media (hover: hover) { .level-bar:hover .level-track { height: 9px; } }

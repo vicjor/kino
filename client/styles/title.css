@@ -1,0 +1,285 @@
+/*
+ * Title page: compact, so the episodes and sources start right under the artwork. The artwork carries the title,
+ * facts, plot and actions itself, over a scrim that blurs and darkens only where the words sit (a progressive blur,
+ * as iOS 26 does behind text on images), so they read cleanly on any picture. The hero grows with its text, never
+ * the other way round.
+ */
+.hero {
+  position: relative; display: flex; flex-direction: column; justify-content: flex-end; isolation: isolate;
+  min-height: min(84vw, 380px); padding-top: calc(var(--sat) + 60px);
+}
+/* The backdrop, set as --art: it dissolves at the foot into its own ambient light (Ambient.tsx), not into black. */
+.hero::before {
+  content: ''; position: absolute; inset: 0; z-index: -2; pointer-events: none; background: var(--art, none) center 18% / cover no-repeat;
+  -webkit-mask: linear-gradient(#000 50%, rgba(0,0,0,.55) 78%, transparent); mask: linear-gradient(#000 50%, rgba(0,0,0,.55) 78%, transparent);
+}
+/* Over the artwork the bar has no material of its own: its buttons are glass circles that frost the image behind them. */
+.hero .topbar { position: absolute; top: 0; left: 0; right: 0; }
+.hero .topbar::before { display: none; }
+.hero .topbar .iconbtn {
+  width: 40px; height: 40px; background: rgba(0,0,0,.28); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.hero .topbar .iconbtn svg { width: 20px; height: 20px; }
+@media (hover: hover) { .hero .topbar .iconbtn:hover { background: rgba(0,0,0,.45); } }
+.hero-fade {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,.4) 0, rgba(0,0,0,.55) 60px, rgba(0,0,0,.34) 55%, rgba(0,0,0,0) 85%), linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,0) 90px);
+  backdrop-filter: blur(22px) saturate(1.3); -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  /* Blur only where the words are: it rises from nothing at the foot (no seam with the light below) and fades out above. */
+  -webkit-mask: linear-gradient(to top, transparent 0, #000 64px, #000 52%, rgba(0,0,0,.6) 70%, transparent 92%); mask: linear-gradient(to top, transparent 0, #000 64px, #000 52%, rgba(0,0,0,.6) 70%, transparent 92%);
+}
+/* The top of the picture stays sharp and clear: a shade only for the bar's glass buttons. */
+.hero::after { content: ''; position: absolute; inset: 0 0 auto; height: 90px; z-index: -1; background: linear-gradient(rgba(0,0,0,.35), transparent); pointer-events: none; }
+.hero-info { position: relative; padding: 0 calc(var(--pad) + var(--sar)) 6px calc(var(--pad) + var(--sal)); }
+.title-body { padding: 0 calc(var(--pad) + var(--sar)) 24px calc(var(--pad) + var(--sal)); max-width: 1180px; }
+.title-head { display: grid; grid-template-columns: minmax(0, 1fr); position: relative; }
+.title-poster { display: none; }
+.title-facts { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+/* Text over a picture: heavier, a hair more open, a soft shadow; never flat gray. */
+.title-facts h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.028em; line-height: 1.04; text-shadow: 0 1px 16px rgba(0,0,0,.45); text-wrap: balance; }
+.title-logo { max-height: 64px; max-width: min(240px, 70%); width: auto; object-fit: contain; object-position: left bottom; margin-bottom: 6px; filter: drop-shadow(0 2px 14px rgba(0,0,0,.5)); }
+.facts { display: flex; gap: 4px 10px; align-items: center; color: rgba(255,255,255,.86); font-size: 13px; font-weight: 600; letter-spacing: .005em; margin-top: 6px; flex-wrap: wrap; font-variant-numeric: tabular-nums; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
+.genres { color: rgba(255,255,255,.72); font-size: 13px; }
+.title-actions { display: flex; gap: 8px; margin-top: 12px; align-items: center; grid-column: 1 / -1; width: 100%; }
+/* Long plots stop at three lines; a tap opens the rest in place. */
+.plot { margin-top: 10px; max-width: 68ch; color: rgba(255,255,255,.86); font-size: 14px; line-height: 1.45; text-shadow: 0 1px 8px rgba(0,0,0,.35); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+.plot.open { -webkit-line-clamp: unset; display: block; cursor: default; }
+.cast { margin-top: 4px; color: rgba(255,255,255,.62); font-size: 12px; max-width: 68ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h { margin: 0; }
+@media (min-width: 720px) {
+  .hero { min-height: min(54vh, 34vw); padding-top: 80px; }
+  .hero::before { background-position: center 22%; }
+  .hero-fade {
+    background:
+      linear-gradient(to top, rgba(0,0,0,.3) 0, rgba(0,0,0,0) 50%),
+      linear-gradient(to right, rgba(0,0,0,.72) 0%, rgba(0,0,0,.4) 34%, rgba(0,0,0,0) 62%);
+    -webkit-mask: linear-gradient(to right, #000 38%, transparent 72%), linear-gradient(to top, transparent 0, #000 90px); -webkit-mask-composite: source-in;
+    mask: linear-gradient(to right, #000 38%, transparent 72%), linear-gradient(to top, transparent 0, #000 90px); mask-composite: intersect;
+  }
+  .hero-info { max-width: 760px; padding-bottom: 22px; }
+  .title-facts h1 { font-size: clamp(40px, 3.6vw, 56px); letter-spacing: -0.032em; }
+  .title-logo { max-height: 104px; max-width: 400px; margin-bottom: 8px; }
+  .facts { font-size: 14px; }
+  .title-actions { margin-top: 16px; flex-wrap: wrap; }
+  .plot { font-size: 15px; margin-top: 14px; }
+}
+
+/* The one button: play or continue. Two-line label so "32 min left" rides along. */
+.playnow { padding: 0 20px 0 16px; min-height: 48px; border-radius: 24px; text-align: left; }
+.playnow svg { width: 20px; height: 20px; }
+.playnow-text { display: flex; flex-direction: column; line-height: 1.1; }
+.playnow-text small { font-size: 11.5px; font-weight: 600; opacity: .7; }
+/* Caught up: nothing new to play, so a quiet button with a check that leads to the episodes. */
+.playnow.caught svg { color: var(--ok); }
+.title-actions .btn:not(.playnow) { min-height: 44px; padding: 0 16px; background: rgba(255,255,255,.14); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(255,255,255,.06); }
+.title-actions .btn.primary:not(.playnow) { background: #fff; color: #000; }
+@media (max-width: 719px) {
+  /* One row: Play takes the room, the rest are glass circles (their names stay for screen readers). */
+  .title-actions .playnow { flex: 1 1 auto; min-width: 0; justify-content: center; }
+  .title-actions .playnow .playnow-text { align-items: center; min-width: 0; }
+  .title-actions .playnow-text span, .title-actions .playnow-text small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .title-actions .btn:not(.playnow) { flex: none; width: 44px; padding: 0; border-radius: 50%; }
+  .title-actions .btn:not(.playnow) .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* ============================ Episodes: a rail, not a wall ================ */
+.ep-section { margin-top: 14px; }
+.ep-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+.ep-count { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
+/*
+ * Segmented control. SegThumb (components/SegThumb.tsx) slides one thumb under the chosen segment on a spring, so a
+ * change of season reads as one object moving, not one pill switching off and another on.
+ */
+.seasons { position: relative; display: flex; gap: 4px; padding: 4px; background: var(--fill); border-radius: 22px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+.seasons::-webkit-scrollbar { display: none; }
+.seg { position: relative; z-index: 1; padding: 0 14px; height: 34px; border-radius: 17px; font-size: 14px; font-weight: 600; color: var(--muted); white-space: nowrap; transition: background .3s var(--ease), color .2s, transform var(--spring-bouncy-dur) var(--spring-bouncy); }
+.seg:active { transform: scale(.95); transition: var(--press), color .1s; }
+.seg.on { background: var(--raised); color: var(--text); box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+.seg-thumb { position: absolute; z-index: 0; top: 4px; left: 0; height: 34px; border-radius: 17px; background: #636366; box-shadow: 0 3px 12px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.1); pointer-events: none; will-change: transform, width; }
+.seasons:has(> .seg-thumb.ready) > .seg.on { background: transparent; box-shadow: none; }
+@media (pointer: coarse) { .seg-thumb { height: 40px; border-radius: 20px; } }
+@media (hover: hover) { .seg:not(.on):hover { color: var(--text); } }
+.seg:focus-visible { outline-offset: -2px; }
+@media (pointer: coarse) { .seg { height: 40px; border-radius: 20px; } }
+
+.eprail-wrap { position: relative; margin: 12px calc(-1 * var(--pad)) 0; }
+.rail-arrow {
+  position: absolute; top: 10px; z-index: 5; height: calc(208px * 9 / 16); width: 44px; display: none; align-items: center; justify-content: center;
+  color: var(--text); opacity: 1; transition: opacity .25s var(--ease), transform .3s var(--ease);
+}
+.rail-arrow::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to right, var(--bg) 40%, transparent); }
+.rail-arrow.next::before { background: linear-gradient(to left, var(--bg) 40%, transparent); }
+.rail-arrow svg { position: relative; width: 22px; height: 22px; stroke-width: 2.5; padding: 7px; border-radius: 50%; background: rgba(44,44,46,.9); box-shadow: 0 6px 20px rgba(0,0,0,.45); box-sizing: content-box; }
+.rail-arrow.prev { left: 0; }
+.rail-arrow.next { right: 0; }
+.rail-arrow.next svg { transform: rotate(180deg); }
+.rail-arrow.off { opacity: 0; pointer-events: none; }
+@media (hover: hover) and (min-width: 720px) {
+  .rail-arrow { display: flex; }
+  .rail-arrow:hover svg { background: var(--raised); }
+  .rail-arrow:active { transform: scale(.94); }
+}
+.eprail {
+  list-style: none; margin: 0; padding: 10px var(--pad) 12px; display: grid; grid-auto-flow: column; grid-auto-columns: 208px; gap: 14px;
+  overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: var(--pad); scrollbar-width: none;
+}
+.eprail::-webkit-scrollbar { display: none; }
+.eprail::after { content: ''; width: 1px; }
+.eprail > li { scroll-snap-align: start; }
+.epc { display: block; width: 100%; text-align: left; border-radius: 12px; transition: transform var(--spring-bouncy-dur) var(--spring-bouncy); }
+.epc-thumb { position: relative; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: var(--surface); box-shadow: 0 0 0 2px transparent; transition: box-shadow .3s var(--ease), filter .3s var(--ease); }
+.epc-thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s var(--ease); }
+/* No still for this episode: the show's backdrop, dimmed and softened, so the card still reads as the show. */
+.epc-thumb img.epc-fallback { filter: brightness(.45) saturate(.7) blur(1px); transform: scale(1.06); }
+.epc-num {
+  position: absolute; left: 8px; top: 8px; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; background: rgba(0,0,0,.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.epc-done { position: absolute; right: 8px; top: 8px; width: 24px; height: 24px; border-radius: 50%; background: var(--ok); color: #05270f; display: inline-flex; align-items: center; justify-content: center; }
+.epc-done svg { width: 14px; height: 14px; stroke-width: 3; }
+.epc-next { position: absolute; right: 8px; bottom: 18px; }
+.epc-thumb .bar { position: absolute; left: 10px; right: 10px; bottom: 9px; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255,255,255,.28); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.epc-thumb .bar i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+/* Episode titles wrap in full, never cut short. */
+.epc-title { margin-top: 8px; font-size: 14px; font-weight: 600; line-height: 1.3; overflow-wrap: break-word; }
+.epc-sub { margin-top: 2px; font-size: 12px; color: var(--muted); }
+.epc.sel .epc-thumb { box-shadow: 0 0 0 2px var(--accent), 0 12px 30px rgba(0,0,0,.45); }
+.epc.sel .epc-title { color: var(--accent); }
+.epc.future { opacity: .5; }
+.epc.done:not(.sel) .epc-thumb img { filter: saturate(.6) brightness(.75); }
+@media (hover: hover) {
+  .epc-thumb { transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), box-shadow .3s var(--ease), filter .3s var(--ease); }
+  .epc:hover .epc-thumb { transform: perspective(900px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg)) scale(1.04); transition: transform .2s ease-out, box-shadow .3s ease, filter .3s ease; }
+  .epc:hover .epc-thumb { box-shadow: 0 0 0 2px rgba(255,255,255,.18), 0 14px 34px rgba(0,0,0,.5); }
+  .epc.sel:hover .epc-thumb { box-shadow: 0 0 0 2px var(--accent), 0 14px 34px rgba(0,0,0,.5); }
+
+}
+.epc:active { transform: scale(.96); transition: var(--press); }
+@media (min-width: 720px) { .eprail { grid-auto-columns: 210px; } .rail-arrow { height: calc(210px * 9 / 16); } }
+
+/* Wide screens: sources live in a right column that starts under the hero, so play is visible without scrolling */
+@media (min-width: 1100px) {
+  .title-body { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(400px, 38%); grid-template-rows: auto auto auto 1fr; gap: 0 48px; align-items: start; }
+  .ep-section { grid-column: 1; }
+  .src-section { grid-column: 2; grid-row: 1 / span 4; margin-top: 14px; }
+  .eprail-wrap { margin-right: 0; }
+  .eprail { padding-right: 0; }
+  .rail-arrow.next { right: -8px; }
+}
+
+/* ============================ Sources ===================================== */
+.src-section { margin-top: 18px; scroll-margin-top: 12px; }
+.sources-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.sources-title { min-width: 0; }
+.sources-title .h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 20px; }
+.sources-title .ep-num { color: var(--accent); font-weight: 800; letter-spacing: -.01em; }
+.ep-meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.ep-overview { color: var(--text-2); font-size: 14px; margin-top: 8px; max-width: 72ch; }
+
+.sources { list-style: none; margin: 14px 0 0; padding: 0; }
+.source {
+  display: flex; gap: 12px; align-items: center; padding: 9px 12px 9px 8px; margin: 0 calc(-1 * var(--pad)); padding-left: calc(var(--pad) - 8px); padding-right: calc(var(--pad) - 8px);
+  border-radius: 14px; cursor: pointer; position: relative; outline-offset: -2px;
+  transition: background .25s var(--ease), transform var(--spring-bouncy-dur) var(--spring-bouncy);
+}
+.source + .source::before { content: ''; position: absolute; left: var(--pad); right: var(--pad); top: -1px; height: 1px; background: var(--hair); transition: opacity .2s; }
+.source.auto { background: linear-gradient(90deg, rgba(255,255,255,.10), rgba(255,255,255,.02) 60%, transparent); }
+.source.auto + .source::before { opacity: 0; }
+.source[aria-disabled="true"] { opacity: .5; cursor: default; }
+.source:active { transform: scale(.985); transition: var(--press), background .1s; }
+@media (hover: hover) {
+  .source:hover { background: var(--surface); }
+  .source:hover::before, .source:hover + .source::before { opacity: 0; }
+  .source.auto:hover { background: linear-gradient(90deg, rgba(255,255,255,.16), rgba(255,255,255,.04) 60%, var(--surface)); }
+  .source:hover .src-play { background: var(--accent); color: var(--accent-ink); transform: scale(1.06); }
+}
+.src-play {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--raised); color: var(--text); transition: background .25s var(--ease), color .2s, transform .3s var(--ease);
+}
+.src-play svg { width: 18px; height: 18px; margin-left: 2px; }
+.source.auto .src-play { background: var(--accent); color: var(--accent-ink); }
+.src-main { flex: 1; min-width: 0; }
+.src-line1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.src-line2 { margin-top: 5px; }
+.src-size-inline { display: none; font-size: 14px; margin-left: auto; white-space: nowrap; }
+.src-size-inline b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.src-size-inline small { color: var(--muted); font-size: 12px; }
+.src-provider { font-weight: 700; }
+.badges { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+.src-name { color: var(--muted); font-size: 12px; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src-warn { color: var(--warn); font-size: 12px; margin-top: 4px; }
+.src-size { flex: none; text-align: right; min-width: 64px; line-height: 1.2; }
+.src-size b { display: block; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.src-size small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.src-actions { display: flex; align-items: center; gap: 2px; flex: none; margin-left: -4px; }
+.src-actions .iconbtn { width: 40px; height: 40px; color: var(--muted); }
+.src-actions .iconbtn svg { width: 20px; height: 20px; }
+@media (hover: hover) { .src-actions .iconbtn:hover { color: var(--text); background: var(--raised); } }
+@media (max-width: 719px) {
+  .src-size { display: none; }
+  .src-size-inline { display: inline-flex; align-items: baseline; gap: 4px; }
+  .src-actions { margin-left: -6px; }
+}
+
+.sources-more { list-style: none; display: flex; justify-content: center; padding: 12px 0 4px; }
+.sources-more .btn { width: 100%; max-width: 420px; justify-content: center; }
+
+/* Weak sources: a calm nudge, not an error */
+.weak { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.weak-text { flex: 1 1 260px; font-size: 14px; color: var(--muted); }
+.weak-text strong { color: var(--text); }
+.empty-actions { display: flex; justify-content: center; margin-top: 14px; }
+.rating-link { text-decoration: none; }
+.rating-link:hover { filter: brightness(1.15); }
+.chip.rt { background: rgba(250,80,60,.16); color: #ff8a7a; }
+.chip.mc { background: rgba(255,204,51,.14); color: #ffd35c; }
+.epc-rating { position: absolute; left: 8px; bottom: 8px; padding: 2px 6px; border-radius: 6px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; background: rgba(0,0,0,.6); color: #fff; backdrop-filter: blur(4px); }
+.epc-rating.hot { background: rgba(255,255,255,.9); color: var(--accent-ink); }
+.epc.done .epc-rating { bottom: 8px; }
+.title-actions .castnow { white-space: nowrap; }
+@media (max-width: 719px) { .title-actions .castnow { flex: 1 1 100%; } }
+
+/* The source the TV is playing right now */
+.source.playing { background: linear-gradient(90deg, rgba(48,209,88,.12), rgba(48,209,88,.03) 60%, transparent); }
+.source.playing + .source::before { opacity: 0; }
+.source.playing .src-play { background: rgba(48,209,88,.18); color: var(--ok); }
+@media (hover: hover) { .source.playing:hover .src-play { background: var(--ok); color: #06140b; } }
+.chip.live { display: inline-flex; align-items: center; gap: 6px; background: rgba(48,209,88,.15); color: var(--ok); }
+.chip.live i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); animation: live-pulse 1.6s ease-in-out infinite; }
+@keyframes live-pulse { 50% { opacity: .35; } }
+.src-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; }
+.src-eq i { display: block; width: 3px; border-radius: 2px; background: currentColor; animation: eq 1s ease-in-out infinite; height: 40%; }
+.src-eq i:nth-child(2) { animation-delay: .2s; height: 100%; }
+.src-eq i:nth-child(3) { animation-delay: .4s; height: 65%; }
+@keyframes eq { 0%, 100% { transform: scaleY(.4); } 50% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .src-eq i, .chip.live i { animation: none; } }
+.trailer { position: relative; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; }
+.trailer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+/* More like this: lives in the free left column on wide screens */
+.similar-section { margin-top: 18px; }
+.similar-section .section { padding: 0 0 8px; }
+.similar-section .section-head, .similar-section .rail { padding-left: 0; }
+.similar-section .rail { margin-left: 0; }
+@media (min-width: 1100px) { .similar-section { grid-column: 1; } }
+/* Mark an episode watched from the rail. Sits where the watched badge goes, so toggling feels in place. */
+.eprail > li { position: relative; }
+.epc-mark { position: absolute; right: 8px; top: 18px; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(0,0,0,.7); color: rgba(255,255,255,.85); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: background .2s, color .2s, opacity .2s, transform .25s var(--ease); }
+.epc-mark svg { width: 14px; height: 14px; stroke-width: 3; }
+.epc-mark.on { background: var(--ok); color: #05270f; }
+.epc-mark:active { transform: scale(.9); }
+/* Play this episode on a TV: beside the watched mark, same shy look. */
+.epc-mark.epc-cast { right: 38px; }
+.epc-mark.epc-cast svg { stroke-width: 2; }
+@media (hover: hover) { .epc-mark:not(.on) { opacity: 0; } .eprail > li:hover .epc-mark, .epc-mark:focus-visible { opacity: 1; } .epc-mark:hover { background: var(--accent); color: var(--accent-ink); } }
+
+/* Per-TV verdict on a release: green plays, amber costs a transcode or may lack sound, red will not work. */
+.fits { display: inline-flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.chip.fit { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.chip.fit i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.chip.fit.yes { background: rgba(48,209,88, .13); color: var(--ok); }
+.chip.fit.meh { background: rgba(255,255,255,.1); color: var(--text-2); }
+.chip.fit.no { background: rgba(255,69,58, .16); color: var(--danger-text); }
+/* A progress bar along the foot of the still: the rating steps up over it. */
+.epc-thumb:has(.bar) .epc-rating { bottom: 20px; }

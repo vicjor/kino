@@ -1,0 +1,986 @@
+[
+  {
+    "file": "marks/ghost-color-64.png",
+    "width": 64,
+    "height": 64,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 6390
+  },
+  {
+    "file": "marks/ghost-color-128.png",
+    "width": 128,
+    "height": 128,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 17297
+  },
+  {
+    "file": "marks/ghost-color-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 54374
+  },
+  {
+    "file": "marks/ghost-color-256.webp",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 38030
+  },
+  {
+    "file": "marks/ghost-color-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 188810
+  },
+  {
+    "file": "marks/ghost-color-512.webp",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 123430
+  },
+  {
+    "file": "marks/ghost-color-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 662022
+  },
+  {
+    "file": "marks/ghost-color-1024.webp",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 410894
+  },
+  {
+    "file": "marks/ghost-black-64.png",
+    "width": 64,
+    "height": 64,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 2598
+  },
+  {
+    "file": "marks/ghost-black-128.png",
+    "width": 128,
+    "height": 128,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 6047
+  },
+  {
+    "file": "marks/ghost-black-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 14648
+  },
+  {
+    "file": "marks/ghost-black-256.webp",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 9868
+  },
+  {
+    "file": "marks/ghost-black-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 36759
+  },
+  {
+    "file": "marks/ghost-black-512.webp",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 23506
+  },
+  {
+    "file": "marks/ghost-black-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 108912
+  },
+  {
+    "file": "marks/ghost-black-1024.webp",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 61814
+  },
+  {
+    "file": "marks/ghost-white-64.png",
+    "width": 64,
+    "height": 64,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 2721
+  },
+  {
+    "file": "marks/ghost-white-128.png",
+    "width": 128,
+    "height": 128,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 6280
+  },
+  {
+    "file": "marks/ghost-white-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 15292
+  },
+  {
+    "file": "marks/ghost-white-256.webp",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 9968
+  },
+  {
+    "file": "marks/ghost-white-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 38233
+  },
+  {
+    "file": "marks/ghost-white-512.webp",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 23606
+  },
+  {
+    "file": "marks/ghost-white-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 113646
+  },
+  {
+    "file": "marks/ghost-white-1024.webp",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent full character",
+    "bytes": 61914
+  },
+  {
+    "file": "marks/ghost-small-16.png",
+    "width": 16,
+    "height": 16,
+    "alpha": true,
+    "kind": "compact portrait",
+    "bytes": 865
+  },
+  {
+    "file": "marks/ghost-small-24.png",
+    "width": 24,
+    "height": 24,
+    "alpha": true,
+    "kind": "compact portrait",
+    "bytes": 1664
+  },
+  {
+    "file": "marks/ghost-small-32.png",
+    "width": 32,
+    "height": 32,
+    "alpha": true,
+    "kind": "compact portrait",
+    "bytes": 2468
+  },
+  {
+    "file": "marks/ghost-small-48.png",
+    "width": 48,
+    "height": 48,
+    "alpha": true,
+    "kind": "compact portrait",
+    "bytes": 4411
+  },
+  {
+    "file": "marks/ghost-small-64.png",
+    "width": 64,
+    "height": 64,
+    "alpha": true,
+    "kind": "compact portrait",
+    "bytes": 6561
+  },
+  {
+    "file": "marks/ghost-small-128.png",
+    "width": 128,
+    "height": 128,
+    "alpha": true,
+    "kind": "compact portrait",
+    "bytes": 17583
+  },
+  {
+    "file": "marks/ghost-small-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "compact portrait",
+    "bytes": 54800
+  },
+  {
+    "file": "marks/ghost-small-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "compact portrait",
+    "bytes": 197316
+  },
+  {
+    "file": "logos/kino-horizontal-on-light-480.png",
+    "width": 480,
+    "height": 150,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 29662
+  },
+  {
+    "file": "logos/kino-horizontal-on-light-480.webp",
+    "width": 480,
+    "height": 150,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 21520
+  },
+  {
+    "file": "logos/kino-horizontal-on-light-960.png",
+    "width": 960,
+    "height": 300,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 91220
+  },
+  {
+    "file": "logos/kino-horizontal-on-light-960.webp",
+    "width": 960,
+    "height": 300,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 58734
+  },
+  {
+    "file": "logos/kino-horizontal-on-light-1920.png",
+    "width": 1920,
+    "height": 600,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 281542
+  },
+  {
+    "file": "logos/kino-horizontal-on-light-1920.webp",
+    "width": 1920,
+    "height": 600,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 171208
+  },
+  {
+    "file": "logos/kino-stacked-on-light-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 28739
+  },
+  {
+    "file": "logos/kino-stacked-on-light-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 89010
+  },
+  {
+    "file": "logos/kino-stacked-on-light-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 274459
+  },
+  {
+    "file": "logos/kino-horizontal-on-dark-480.png",
+    "width": 480,
+    "height": 150,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 30317
+  },
+  {
+    "file": "logos/kino-horizontal-on-dark-480.webp",
+    "width": 480,
+    "height": 150,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 21932
+  },
+  {
+    "file": "logos/kino-horizontal-on-dark-960.png",
+    "width": 960,
+    "height": 300,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 92024
+  },
+  {
+    "file": "logos/kino-horizontal-on-dark-960.webp",
+    "width": 960,
+    "height": 300,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 59388
+  },
+  {
+    "file": "logos/kino-horizontal-on-dark-1920.png",
+    "width": 1920,
+    "height": 600,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 282069
+  },
+  {
+    "file": "logos/kino-horizontal-on-dark-1920.webp",
+    "width": 1920,
+    "height": 600,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 169364
+  },
+  {
+    "file": "logos/kino-stacked-on-dark-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 29152
+  },
+  {
+    "file": "logos/kino-stacked-on-dark-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 89534
+  },
+  {
+    "file": "logos/kino-stacked-on-dark-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 274369
+  },
+  {
+    "file": "logos/kino-horizontal-black-480.png",
+    "width": 480,
+    "height": 150,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 12110
+  },
+  {
+    "file": "logos/kino-horizontal-black-480.webp",
+    "width": 480,
+    "height": 150,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 7754
+  },
+  {
+    "file": "logos/kino-horizontal-black-960.png",
+    "width": 960,
+    "height": 300,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 29550
+  },
+  {
+    "file": "logos/kino-horizontal-black-960.webp",
+    "width": 960,
+    "height": 300,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 17320
+  },
+  {
+    "file": "logos/kino-horizontal-black-1920.png",
+    "width": 1920,
+    "height": 600,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 75111
+  },
+  {
+    "file": "logos/kino-horizontal-black-1920.webp",
+    "width": 1920,
+    "height": 600,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 39152
+  },
+  {
+    "file": "logos/kino-stacked-black-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 11029
+  },
+  {
+    "file": "logos/kino-stacked-black-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 26345
+  },
+  {
+    "file": "logos/kino-stacked-black-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 64754
+  },
+  {
+    "file": "logos/kino-horizontal-white-480.png",
+    "width": 480,
+    "height": 150,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 12643
+  },
+  {
+    "file": "logos/kino-horizontal-white-480.webp",
+    "width": 480,
+    "height": 150,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 7850
+  },
+  {
+    "file": "logos/kino-horizontal-white-960.png",
+    "width": 960,
+    "height": 300,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 30931
+  },
+  {
+    "file": "logos/kino-horizontal-white-960.webp",
+    "width": 960,
+    "height": 300,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 17418
+  },
+  {
+    "file": "logos/kino-horizontal-white-1920.png",
+    "width": 1920,
+    "height": 600,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 75727
+  },
+  {
+    "file": "logos/kino-horizontal-white-1920.webp",
+    "width": 1920,
+    "height": 600,
+    "alpha": true,
+    "kind": "transparent logo",
+    "bytes": 39158
+  },
+  {
+    "file": "logos/kino-stacked-white-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 11546
+  },
+  {
+    "file": "logos/kino-stacked-white-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 27545
+  },
+  {
+    "file": "logos/kino-stacked-white-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "transparent stacked logo",
+    "bytes": 65526
+  },
+  {
+    "file": "macos/png/kino-light-16.png",
+    "width": 16,
+    "height": 16,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 439
+  },
+  {
+    "file": "macos/png/kino-light-32.png",
+    "width": 32,
+    "height": 32,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 1156
+  },
+  {
+    "file": "macos/png/kino-light-64.png",
+    "width": 64,
+    "height": 64,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 3138
+  },
+  {
+    "file": "macos/png/kino-light-128.png",
+    "width": 128,
+    "height": 128,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 9601
+  },
+  {
+    "file": "macos/png/kino-light-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 31681
+  },
+  {
+    "file": "macos/png/kino-light-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 115692
+  },
+  {
+    "file": "macos/png/kino-light-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 427052
+  },
+  {
+    "file": "macos/Kino.iconset/icon_16x16.png",
+    "width": 16,
+    "height": 16,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 439
+  },
+  {
+    "file": "macos/Kino.iconset/icon_16x16@2x.png",
+    "width": 32,
+    "height": 32,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 1156
+  },
+  {
+    "file": "macos/Kino.iconset/icon_32x32.png",
+    "width": 32,
+    "height": 32,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 1156
+  },
+  {
+    "file": "macos/Kino.iconset/icon_32x32@2x.png",
+    "width": 64,
+    "height": 64,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 3328
+  },
+  {
+    "file": "macos/Kino.iconset/icon_128x128.png",
+    "width": 128,
+    "height": 128,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 9601
+  },
+  {
+    "file": "macos/Kino.iconset/icon_128x128@2x.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 31681
+  },
+  {
+    "file": "macos/Kino.iconset/icon_256x256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 31681
+  },
+  {
+    "file": "macos/Kino.iconset/icon_256x256@2x.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 115692
+  },
+  {
+    "file": "macos/Kino.iconset/icon_512x512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 115692
+  },
+  {
+    "file": "macos/Kino.iconset/icon_512x512@2x.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 427052
+  },
+  {
+    "file": "macos/layers/background-light-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "unmasked Icon Composer background",
+    "bytes": 23054
+  },
+  {
+    "file": "macos/png/kino-dark-16.png",
+    "width": 16,
+    "height": 16,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 435
+  },
+  {
+    "file": "macos/png/kino-dark-32.png",
+    "width": 32,
+    "height": 32,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 1111
+  },
+  {
+    "file": "macos/png/kino-dark-64.png",
+    "width": 64,
+    "height": 64,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 3063
+  },
+  {
+    "file": "macos/png/kino-dark-128.png",
+    "width": 128,
+    "height": 128,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 9264
+  },
+  {
+    "file": "macos/png/kino-dark-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 30537
+  },
+  {
+    "file": "macos/png/kino-dark-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 112557
+  },
+  {
+    "file": "macos/png/kino-dark-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "macOS icon",
+    "bytes": 414932
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_16x16.png",
+    "width": 16,
+    "height": 16,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 435
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_16x16@2x.png",
+    "width": 32,
+    "height": 32,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 1111
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_32x32.png",
+    "width": 32,
+    "height": 32,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 1111
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_32x32@2x.png",
+    "width": 64,
+    "height": 64,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 3188
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_128x128.png",
+    "width": 128,
+    "height": 128,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 9264
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_128x128@2x.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 30537
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_256x256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 30537
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_256x256@2x.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 112557
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_512x512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 112557
+  },
+  {
+    "file": "macos/Kino-Dark.iconset/icon_512x512@2x.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "macOS iconset",
+    "bytes": 414932
+  },
+  {
+    "file": "macos/layers/background-dark-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "unmasked Icon Composer background",
+    "bytes": 23063
+  },
+  {
+    "file": "macos/layers/foreground-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "Icon Composer foreground",
+    "bytes": 463287
+  },
+  {
+    "file": "macos/tray/trayTemplate.png",
+    "width": 18,
+    "height": 18,
+    "alpha": true,
+    "kind": "black alpha template",
+    "bytes": 524
+  },
+  {
+    "file": "macos/tray/trayTemplate@2x.png",
+    "width": 36,
+    "height": 36,
+    "alpha": true,
+    "kind": "black alpha template",
+    "bytes": 1336
+  },
+  {
+    "file": "macos/tray/trayTemplate-22.png",
+    "width": 22,
+    "height": 22,
+    "alpha": true,
+    "kind": "black alpha template",
+    "bytes": 727
+  },
+  {
+    "file": "macos/tray/trayTemplate-22@2x.png",
+    "width": 44,
+    "height": 44,
+    "alpha": true,
+    "kind": "black alpha template",
+    "bytes": 1736
+  },
+  {
+    "file": "web/icon-16.png",
+    "width": 16,
+    "height": 16,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 378
+  },
+  {
+    "file": "web/icon-24.png",
+    "width": 24,
+    "height": 24,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 678
+  },
+  {
+    "file": "web/icon-32.png",
+    "width": 32,
+    "height": 32,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 995
+  },
+  {
+    "file": "web/icon-48.png",
+    "width": 48,
+    "height": 48,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 1868
+  },
+  {
+    "file": "web/icon-64.png",
+    "width": 64,
+    "height": 64,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 2857
+  },
+  {
+    "file": "web/icon-128.png",
+    "width": 128,
+    "height": 128,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 9007
+  },
+  {
+    "file": "web/icon-180.png",
+    "width": 180,
+    "height": 180,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 16055
+  },
+  {
+    "file": "web/icon-192.png",
+    "width": 192,
+    "height": 192,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 17877
+  },
+  {
+    "file": "web/icon-256.png",
+    "width": 256,
+    "height": 256,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 30474
+  },
+  {
+    "file": "web/icon-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 113914
+  },
+  {
+    "file": "web/icon-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "alpha": true,
+    "kind": "opaque web icon",
+    "bytes": 423999
+  },
+  {
+    "file": "web/icon-maskable-192.png",
+    "width": 192,
+    "height": 192,
+    "alpha": true,
+    "kind": "opaque maskable icon",
+    "bytes": 13118
+  },
+  {
+    "file": "web/icon-maskable-512.png",
+    "width": 512,
+    "height": 512,
+    "alpha": true,
+    "kind": "opaque maskable icon",
+    "bytes": 80963
+  },
+  {
+    "file": "preview.png",
+    "width": 1600,
+    "height": 1220,
+    "alpha": true,
+    "kind": "overview",
+    "bytes": 373529
+  }
+]

@@ -1,0 +1,53 @@
+/* ============================ Up next (cast) ============================ */
+/* Bottom-right card while the credits roll on the TV: thumbnail, episode, a countdown that drains along the bottom edge. */
+.upnext {
+  position: fixed; z-index: 80; right: calc(var(--sar) + 16px); bottom: calc(var(--sab) + 96px);
+  width: min(420px, calc(100vw - 32px)); display: flex; gap: 14px; padding: 14px; border-radius: 20px; overflow: hidden;
+  background: rgba(36,36,40,.9); backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid rgba(255,255,255,.1); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 18px 60px rgba(0,0,0,.55);
+  animation: upnext-in .55s var(--ease) both;
+}
+.upnext.out { animation: upnext-out .26s var(--ease-exit) both; pointer-events: none; }
+@keyframes upnext-in { from { opacity: 0; transform: translateY(24px) scale(.94); } }
+@keyframes upnext-out { to { opacity: 0; transform: translateY(12px) scale(.96); } }
+.app.has-dock .upnext { bottom: calc(var(--sab) + var(--npbar-top) + 30px); }
+@media (min-width: 720px) {
+  .upnext { right: 24px; bottom: 24px; }
+  .app.has-dock .upnext { bottom: 24px; }
+  .app.has-bar .upnext, .app.has-dock.has-bar .upnext { bottom: max(112px, calc(var(--npbar-h, 0px) + 12px)); }
+}
+.upnext-art { width: 132px; aspect-ratio: 16 / 9; border-radius: 12px; object-fit: cover; flex: none; background: rgba(255,255,255,.08); box-shadow: 0 6px 20px rgba(0,0,0,.4); align-self: flex-start; }
+.upnext-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.upnext-label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; }
+.upnext-label svg { width: 14px; height: 14px; }
+.upnext-title { font-weight: 700; font-size: 16px; letter-spacing: -.01em; line-height: 1.25; }
+.upnext-show { color: var(--muted); font-size: 13px; }
+.upnext-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.upnext-actions .btn { font-variant-numeric: tabular-nums; }
+.upnext-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); transition: width 1s linear; border-radius: 0 2px 2px 0; }
+@media (max-width: 420px) {
+  .upnext { gap: 12px; padding: 12px; }
+  .upnext-art { width: 104px; }
+}
+
+/* ============================ Skip intro ============================ */
+/* A plain pill while the opening titles run: in the player's bottom-right corner, and on every phone while casting. */
+.skip-intro {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: 22px;
+  font-weight: 700; font-size: 15px; letter-spacing: -.01em; color: #fff; white-space: nowrap;
+  background: rgba(36,36,40,.72); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,.28); box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  animation: skip-intro-in .45s var(--ease) both; transition: background .18s, border-color .18s, transform .18s var(--ease);
+}
+.skip-intro::after { content: ''; width: 0; height: 0; border-left: 7px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
+.skip-intro:hover { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.5); }
+.skip-intro:active { transform: scale(.95); }
+.skip-intro.busy { opacity: .6; pointer-events: none; }
+@keyframes skip-intro-in { from { opacity: 0; transform: translateY(10px); } }
+.cast-skip-intro { position: fixed; z-index: 75; right: calc(var(--sar) + 16px); bottom: calc(var(--sab) + 96px); }
+.app.has-dock .cast-skip-intro { bottom: calc(var(--sab) + var(--npbar-top) + 30px); }
+@media (min-width: 720px) {
+  .cast-skip-intro { right: 24px; bottom: 24px; }
+  .app.has-dock .cast-skip-intro { bottom: 24px; }
+  .app.has-bar .cast-skip-intro, .app.has-dock.has-bar .cast-skip-intro { bottom: max(112px, calc(var(--npbar-h, 0px) + 12px)); }
+}

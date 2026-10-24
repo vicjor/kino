@@ -1,0 +1,19 @@
+/* Search: one big field, kind chips once there are results, recent queries while idle */
+.search input[type=search]::-webkit-search-cancel-button, .search input[type=search]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+.search-kinds { margin: 12px 0 0; align-self: flex-start; display: inline-flex; }
+.search-idle { padding: 4px 0 24px; }
+.search-recent .section-head { padding-top: 6px; }
+.search-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 calc(var(--pad) + var(--sar)) 8px calc(var(--pad) + var(--sal)); }
+.chip.big { display: inline-flex; align-items: center; min-height: 38px; font-size: 14px; font-weight: 500; padding: 0 14px; border-radius: 999px; color: var(--text); background: var(--fill); border: 1px solid transparent; transition: background .25s var(--ease), transform var(--spring-bouncy-dur) var(--spring-bouncy); }
+.chip.big:active { transform: scale(.94); transition: var(--press), background .1s; }
+@media (hover: hover) { .chip.big:hover { background: var(--fill-strong); } }
+.more.link { background: none; color: var(--muted); font-size: 13px; }
+.chip.big:focus-visible { outline-offset: -2px; }
+@media (pointer: coarse) { .chip.big { min-height: 44px; } }
+@media (hover: hover) { .more.link:hover { color: var(--text); } }
+.search-hint kbd { margin: 0 2px; }
+.search-hero { display: flex; flex-direction: column; align-items: flex-start; }
+/* flex: none, or the column layout shrinks the field to its text height */
+.search-hero .search { width: 100%; flex: none; }
+/* The iOS large title over the field. */
+.search-title { margin: 0 0 10px; }

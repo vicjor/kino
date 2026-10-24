@@ -1,0 +1,40 @@
+/* Now-playing bar (NowPlayingBar.tsx). In the first load with the bar, not in the Player chunk, so a bar shown while
+   casting on a cold load is placed and styled. The dock's glass and placement for it are in dock.css. */
+/* A tap anywhere on the bar opens the device's big controller. */
+.npbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: rgba(28,28,30,.96); backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding: 8px calc(var(--pad) + var(--sar)) calc(var(--sab) + 8px) calc(var(--pad) + var(--sal)); cursor: pointer; }
+.np-top { display: flex; align-items: center; gap: 10px; }
+.np-top img { width: 36px; height: 54px; object-fit: cover; border-radius: 4px; }
+.np-glyph { width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--raised); color: var(--muted); flex: none; }
+.np-glyph svg { width: 18px; height: 18px; }
+/* The title block is the bar's one real button: text left-aligned, title and device on their own lines. */
+.np-text { flex: 1; min-width: 0; text-align: left; line-height: 1.3; }
+.np-text .np-title, .np-text .np-sub { display: block; }
+/* Titles and device names wrap instead of ending in an ellipsis. */
+.np-title { font-weight: 600; overflow-wrap: anywhere; }
+.np-sub { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+/* Thin divider between transport and secondary controls */
+.np-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; flex: none; }
+.np-more { display: contents; }
+.npbar .iconbtn.on { color: var(--accent); }
+.np-seek { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.np-seek input { flex: 1; accent-color: var(--accent); min-width: 0; }
+@media (max-width: 480px) { .np-seek .btn { padding: 0 10px; } }
+.np-vol { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.np-vol input { flex: 1; accent-color: var(--accent); min-width: 0; }
+.np-volpct { font-size: 12px; color: var(--muted); min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
+/* Thin progress line under the mini bar; the phone hides the slider row and shows this instead. */
+.np-prog { display: none; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
+.np-prog i { display: block; height: 100%; background: var(--accent); transition: width .5s linear; }
+.npbar.foreign .np-prog { display: block; }
+
+/* Phone mini player: transport only; a tap opens the device controller with the scrubber, volume and subtitles. */
+@media (max-width: 719.98px) {
+  .npbar .np-more, .npbar .np-seek, .npbar .np-vol { display: none; }
+  .npbar .np-prog { display: block; }
+  .npbar .np-top { gap: 12px; }
+  .npbar .np-top img, .npbar .np-glyph { width: 40px; height: 40px; border-radius: 11px; }
+  .npbar .np-title { font-size: 15px; letter-spacing: -.01em; }
+  .npbar .np-sub { font-size: 12.5px; }
+  .npbar .np-top .iconbtn { width: 40px; height: 40px; border-radius: 13px; }
+  .npbar .np-top .iconbtn:active { background: rgba(255,255,255,.1); }
+}

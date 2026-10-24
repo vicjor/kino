@@ -1,0 +1,37 @@
+# Tag a version (git tag v0.2.0 && git push --tags) and the desktop app is built
+# for macOS (arm64 + x64 DMG) and Linux (AppImage) and attached to a GitHub release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  desktop:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      # Node and bun as pinned in mise.toml, like ci.yml.
+      - uses: jdx/mise-action@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck && bun run test
+      - run: bun run build
+      # One arch per electron-builder run, each after fetching that CPU's ffmpeg into vendor/ffmpeg
+      # (scripts/ffmpeg-arch.sh). The `dmg` target makes electron-builder build just the arch given, not every arch in mac.target.
+      - if: runner.os == 'macOS'
+        run: |
+          for arch in arm64 x64; do
+            sh scripts/ffmpeg-arch.sh "$arch"
+            bunx electron-builder --mac dmg --"$arch" --publish never
+          done
+      - if: runner.os == 'Linux'
+        run: bunx electron-builder --linux --publish never
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.dmg
+            release/*.AppImage
+          generate_release_notes: true

@@ -1,0 +1,17 @@
+/* Fake landscape: the player root is turned 90 degrees clockwise and sized to the rotated viewport.
+   Rotate happens first (about the top-left corner), then the box is pushed right by one screen width. */
+.player[data-rotated] {
+  top: 0; left: 0; width: 100dvh; height: 100dvw; transform-origin: top left; transform: translateX(100dvw) rotate(90deg);
+}
+/* Safe areas follow the device, not the content: the notch is now on the left, the home indicator on the right. */
+.player[data-rotated] .controls { padding: 14px calc(var(--sab) + 16px) 12px calc(var(--sat) + 16px); }
+.player[data-rotated] .tstats { top: 64px; right: calc(var(--sab) + 14px); }
+.player[data-rotated] .pnotice { bottom: 40px; }
+.player[data-rotated] .countdown { right: calc(var(--sab) + 16px); bottom: 28px; }
+.player[data-rotated]:not(.hide-cursor) .pnotice, .player[data-rotated]:not(.hide-cursor) .countdown { bottom: 200px; }
+/* Only phones and tablets get the button; a landscape viewport never needs it */
+@media (orientation: landscape) { .rotate-btn { display: none; } }
+
+/* Connect phase: the spinner alone read as "nothing happens", so say what we are waiting on and offer a way out */
+.pcenter .msg.dim { color: rgba(255,255,255,.6); font-size: 13px; max-width: 70vw; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: -8px; }
+.pcenter-cancel { pointer-events: auto; margin-top: 10px; min-height: 42px; font-size: 15px; }

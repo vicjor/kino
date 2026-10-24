@@ -1,0 +1,18 @@
+{
+  "tool": "Built-in image_gen",
+  "approvedSource": "sources/approved-concept.png",
+  "prompts": [
+    {
+      "key": "ghost-master",
+      "prompt": "Use case: background-extraction. Edit target: the supplied selected Kino blanket ghost logo. Remove ONLY the cream background, making everything outside the character genuinely transparent alpha. Preserve the selected artwork EXACTLY, with its full silhouette, lavender blanket, dark purple outlines and hood opening, two cream deadpan eyes, ONE raised cream eyebrow, mitten holding dark remote with a gold button, and single coral sock with cream stripe. Do not reinterpret, redraw, simplify, restyle, recolor or change proportions. Keep its few blanket crease strokes. Keep cream eyes and sock stripe opaque, only background is transparent. No ground shadow, no border, no glow. Return one isolated full-body ghost on transparent background, at highest available resolution ideally 2048x2048, approximately 8% clear padding each side. Crisp edges with clean alpha, no baked-in checkerboard, no text. This is the approved production master, identity fidelity is essential."
+    },
+    {
+      "key": "ghost-small",
+      "prompt": "Use case: logo-brand, precise-object-edit. Edit target: selected Kino blanket ghost. Create the SMALL-USE close-up companion of this exact character for 16-32px favicon and menu bar use. Keep EXACT original slouching tilted lavender hood shape, dark aubergine face opening, two cream deadpan eyes and especially the ONE raised cream eyebrow with same expression. Frame only head and the small crossed blanket collar immediately below the face, as a compact bust. No body, sock, remote, arms or props in this optical small-size companion. Do NOT replace it with a generic blob, robot visor, geometric ghost or different eyes. Gently thicken the original outer outline and slightly enlarge eyes and eyebrow for tiny size legibility. Preserve the hood's asymmetry and its diagonally folded lower collar. Flat original lavender and aubergine and cream fills, no gradients, no shadows, at most ONE hood crease line. Same identity, recognizable cropped portrait. Transparent alpha background, completely empty around the isolated closeup, clean alpha edges, no checkerboard, no text, highest available resolution ideally 2048x2048 with 8% padding."
+    },
+    {
+      "key": "ghost-mono",
+      "prompt": "Use case: logo-brand, precise-object-edit. Edit target: selected Kino blanket ghost. Create a one-ink BLACK ON TRANSPARENT monochrome version of the FULL original character for a monochrome logo. Preserve its EXACT seated blanket silhouette, hood tilt, facial expression and original proportions, raised eyebrow, remote hand and protruding sock. Convert to a bold silhouette using solid black shapes with transparent negative-space cutouts for the facial opening, blanket fold separation, sock stripe and remote button. Eyes and raised eyebrow are black inside the transparent face opening, so their attitude is kept; no opaque white anywhere. No gray or color, no gradients, no background, no shadows. Simplify internal blanket creases only as needed for strong single-ink reproduction, not the outer character. This is a clean screen-print-like companion of the approved mascot, NOT a new character. No text. Transparent alpha, highest available resolution, with 8% padding."
+    }
+  ]
+}

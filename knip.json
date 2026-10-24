@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["test/**/*.test.ts", "scripts/**"],
+  "ignore": ["assets/**"],
+  // macOS binaries the server spawns: dns-sd (cast/dnssd.ts), arp (cast/dlna.ts, from the DLNA change in flight:
+  // knip hints "Remove from ignoreBinaries" until that lands, which is harmless).
+  "ignoreBinaries": ["dns-sd", "mktemp", "arp"],
+  // TODO: dead exports knip finds in server files: SHUTDOWN_BUDGET (lifecycle.ts), binFailed and FFMPEG
+  // (media/bins.ts), the FFMPEG re-export (media/hls.ts). knip can only skip a whole file's exports, so un-export
+  // or drop those four and delete this block, or CI misses new dead exports in these three files.
+  "ignoreIssues": {
+    "server/lifecycle.ts": ["exports"],
+    "server/media/bins.ts": ["exports"],
+    "server/media/hls.ts": ["exports"]
+  }
+}

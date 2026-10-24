@@ -1,0 +1,79 @@
+/*
+ * The player as the TV's remote (TvRemote.tsx). The picture is on the TV, so its artwork stands in: blurred into
+ * light behind everything, and sharp on a card that settles back while the TV is paused, as an album does in Music.
+ * Phones get one column, Now Playing style; a wide screen puts the artwork left and the remote right.
+ */
+.tvr {
+  position: fixed; inset: 0; z-index: 30; overflow: hidden auto; overscroll-behavior: contain; background: #000; color: #fff;
+  transform-origin: 50% 0; -webkit-tap-highlight-color: transparent;
+}
+.tvr-bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+.tvr-bg::before {
+  content: ''; position: absolute; inset: -14%; background: var(--art, none) center / cover no-repeat;
+  filter: blur(72px) saturate(1.8) brightness(.6); transform: scale(1.1);
+}
+.tvr-bg::after { content: ''; position: absolute; inset: 0; background: radial-gradient(130% 90% at 50% 10%, transparent 30%, rgba(0,0,0,.55)), linear-gradient(transparent 50%, rgba(0,0,0,.55)); }
+.tvr-col {
+  position: relative; min-height: 100%; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px;
+  padding: calc(var(--sat) + 12px) calc(var(--sar) + 22px) calc(var(--sab) + 26px) calc(var(--sal) + 22px);
+}
+.tvr-head { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* The grabber says it pulls down, on a touch screen. */
+.tvr-grab { width: 38px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.32); }
+@media (pointer: fine) { .tvr-grab { visibility: hidden; } }
+
+.tvr-art {
+  position: relative; aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; background: rgba(255,255,255,.06);
+  box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07);
+  transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), box-shadow .5s var(--ease);
+}
+.tvr-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tvr.paused .tvr-art, .tvr.ended .tvr-art { transform: scale(.86); box-shadow: 0 14px 40px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.05); }
+.tvr-art-glyph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.35); }
+.tvr-art-glyph svg { width: 64px; height: 64px; }
+.tvr-badge {
+  position: absolute; left: 12px; bottom: 12px; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 13px 0 10px;
+  border-radius: 16px; font-size: 13px; font-weight: 600; letter-spacing: var(--ls-body); color: #fff;
+  background: rgba(0,0,0,.42); backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
+}
+.tvr-badge svg { width: 16px; height: 16px; flex: none; }
+.tvr .skip-intro { position: absolute; right: 12px; bottom: 12px; }
+
+.tvr-panel { display: flex; flex-direction: column; gap: 16px; }
+.tvr-titles { display: flex; flex-direction: column; gap: 3px; }
+.tvr-title { margin: 0; font-size: clamp(24px, 6.4vw, 32px); font-weight: 700; letter-spacing: var(--ls-title); line-height: 1.1; overflow-wrap: anywhere; }
+.tvr-transport { display: flex; align-items: center; justify-content: center; gap: clamp(28px, 11vw, 60px); }
+.tvr-skip, .tvr-play { position: relative; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; flex: none; color: #fff; transition: transform var(--spring-bouncy-dur) var(--spring-bouncy), background .2s, opacity .2s; }
+.tvr-skip { width: 64px; height: 64px; }
+.tvr-play { width: 84px; height: 84px; background: #fff; color: #000; box-shadow: 0 12px 34px rgba(0,0,0,.35); }
+.tvr-skip:active { transform: scale(.84); background: rgba(255,255,255,.12); transition: var(--press), background .1s; }
+.tvr-play:active { transform: scale(.9); transition: var(--press); }
+@media (hover: hover) { .tvr-skip:not(:disabled):hover { background: rgba(255,255,255,.1); } }
+.tvr-skip:disabled, .tvr-play:disabled { opacity: .4; }
+.tvr-vol { gap: 8px; }
+.tvr-vol-ico { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: rgba(255,255,255,.8); flex: none; }
+.tvr-vol-ico svg { width: 20px; height: 20px; }
+.tvr-vol-pct { width: 28px; text-align: right; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: rgba(255,255,255,.6); }
+.tvr-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.tvr-error { color: var(--danger-text); font-size: 13px; text-align: center; }
+.tvr-ended { display: flex; flex-direction: column; gap: 16px; }
+.tvr-ended p { margin: 0; font-size: 15px; line-height: 1.45; color: rgba(255,255,255,.75); }
+.tvr-ended-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Up next while the credits roll on the TV: over the artwork on a phone, in the corner on a wide screen. */
+.tvr .upnext { top: calc(var(--sat) + 66px); bottom: auto; right: calc(var(--sar) + 14px); }
+
+@media (min-width: 900px) and (min-aspect-ratio: 5 / 4) {
+  .tvr-col {
+    max-width: 1280px; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(340px, 1fr); grid-template-rows: auto 1fr;
+    column-gap: clamp(36px, 5vw, 80px); row-gap: 0; align-items: center; padding-left: calc(var(--sal) + 36px); padding-right: calc(var(--sar) + 36px);
+  }
+  .tvr-head { grid-column: 1 / -1; align-self: start; }
+  .tvr-title { font-size: clamp(28px, 2.6vw, 40px); }
+  .tvr-actions { justify-content: flex-start; }
+  .tvr-transport { justify-content: flex-start; gap: 36px; margin-left: -10px; }
+  .tvr .upnext { top: auto; bottom: 24px; right: 24px; }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) { .tvr-bg::before { display: none; } .tvr-badge { background: rgba(0,0,0,.85); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+@media (prefers-reduced-motion: reduce) { .tvr.paused .tvr-art, .tvr.ended .tvr-art { transform: none; } }

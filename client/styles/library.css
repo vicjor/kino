@@ -1,0 +1,4 @@
+.lib-head { align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.lib-summary { color: var(--muted); font-size: 14px; }
+.hist-done { position: absolute; right: 8px; top: 8px; width: 24px; height: 24px; border-radius: 50%; background: var(--ok); color: #05270f; display: inline-flex; align-items: center; justify-content: center; }
+.hist-done svg { width: 14px; height: 14px; stroke-width: 3; }
