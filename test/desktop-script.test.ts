@@ -38,18 +38,40 @@ function run(dir: string, mode: string, env: Record<string, string> = {}) {
   return { code: r.status, out: r.stdout + r.stderr };
 }
 
-test('desktop.sh: refuses in the main checkout, whose dist/ is what production serves', () => {
-  for (const mode of ['run', 'dist']) {
-    const r = run(MAIN, mode);
-    assert.equal(r.code, 1, mode);
-    assert.match(r.out, /Refusing: bun run build in the main checkout/);
-    assert.doesNotMatch(r.out, /bun run build \|/);
-  }
+/** A launchd agent in the scratch HOME whose WorkingDirectory is `dir`, as scripts/plist.sh writes it. */
+const AGENT = path.join(TMP, 'Library/LaunchAgents/com.kino.plist');
+function servedFrom(dir: string): void {
+  fs.mkdirSync(path.dirname(AGENT), { recursive: true });
+  fs.writeFileSync(AGENT, `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>Label</key><string>com.kino</string><key>WorkingDirectory</key><string>${dir}</string></dict></plist>\n`);
+}
+
+test('desktop.sh: refuses in the checkout launchd serves, whose dist/ is what production serves', { skip: process.platform !== 'darwin' }, () => {
+  servedFrom(MAIN);
+  try {
+    for (const mode of ['run', 'dist']) {
+      const r = run(MAIN, mode);
+      assert.equal(r.code, 1, mode);
+      assert.match(r.out, /Refusing: launchd serves Kino from this checkout/);
+      assert.doesNotMatch(r.out, /bun run build \|/);
+    }
+  } finally { fs.rmSync(AGENT); }
   assert.equal(run(WT, 'nonsense').code, 2);
 });
 
-test('desktop.sh: DEPLOY=1 builds and runs in the main checkout anyway', () => {
+test('desktop.sh: a checkout launchd does not serve, a fresh clone, just builds and runs', () => {
+  assert.match(run(MAIN, 'run').out, /^electron \. \|/m, 'no launchd agent at all');
+  servedFrom(path.join(TMP, 'elsewhere'));
+  try {
+    const r = run(MAIN, 'run');
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /^bun run build \|/m);
+  } finally { fs.rmSync(AGENT); }
+});
+
+test('desktop.sh: DEPLOY=1 builds and runs in the checkout launchd serves anyway', { skip: process.platform !== 'darwin' }, () => {
+  servedFrom(MAIN);
   const r = run(MAIN, 'run', { DEPLOY: '1' });
+  fs.rmSync(AGENT);
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /^bun run build \|/m);
   assert.match(r.out, /^electron \. \|/m);
