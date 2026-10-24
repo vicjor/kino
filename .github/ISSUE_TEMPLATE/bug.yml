@@ -16,7 +16,7 @@ body:
     id: server
     attributes:
       label: Server
-      placeholder: macOS on Apple Silicon, Node 26, Kino 0.2.0 (Settings, About shows the Kino and Node versions)
+      placeholder: macOS on Apple Silicon, Node 26, Kino 0.1.0 (Settings, About shows the Kino and Node versions)
   - type: textarea
     id: what
     attributes:
