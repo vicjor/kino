@@ -79,7 +79,7 @@ Dev and worktree desktop windows use their own Electron app folder, never Kino.a
 - **`ffmpeg-static` downloads a platform binary at `bun install`.** Always install on the machine that runs Kino, never copy `node_modules` from another one. Bun skips lifecycle scripts unless the package is in `trustedDependencies` in `package.json`, so a new native dependency has to be added there or its binary never arrives.
 - **dns-sd discovery exists because bonjour-service gets nothing on a Mac where Home Assistant already owns udp/5353.** Keep both paths, merged, on darwin.
 - **Chromecast discovery accumulates.** A device that misses one browse window must not flicker out of the picker.
-- **The desktop DMG bundles jellyfin-ffmpeg's GPL build** (`scripts/ffmpeg-arch.sh`, licence and source link next to the binaries). Never ffmpeg-static's macOS build: it is configured with `--enable-nonfree` and not redistributable.
+- **The desktop DMG bundles jellyfin-ffmpeg's GPL build** (`scripts/ffmpeg-dmg.sh`, licence and source link next to the binaries). Never ffmpeg-static's macOS build: it is configured with `--enable-nonfree` and not redistributable.
 
 ## Conventions
 

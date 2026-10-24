@@ -1,5 +1,6 @@
 # Tag a version (git tag v0.1.0 && git push origin v0.1.0) and the desktop app is built
-# for macOS (arm64 + x64 DMG) and Linux (AppImage) and attached to a GitHub release.
+# for macOS (Apple Silicon DMG) and Linux (AppImage) and attached to a GitHub release.
+# The desktop app's updater (desktop/updater.cjs) reads the latest release, so keep the asset names as built.
 name: Release
 
 on:
@@ -25,15 +26,12 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck && bun run test
       - run: bun run build
-      # One arch per electron-builder run, each after fetching that CPU's ffmpeg into vendor/ffmpeg
-      # (scripts/ffmpeg-arch.sh) and its node-datachannel binary (scripts/native-arch.sh). The `dmg` target makes electron-builder build just the arch given, not every arch in mac.target.
+      # Apple Silicon only (macos-latest is arm64, so bun install fetched arm64 native modules), with its ffmpeg in
+      # vendor/ffmpeg (scripts/ffmpeg-dmg.sh).
       - if: runner.os == 'macOS'
         run: |
-          for arch in arm64 x64; do
-            sh scripts/ffmpeg-arch.sh "$arch"
-            sh scripts/native-arch.sh "$arch"
-            bunx electron-builder --mac dmg --"$arch" --publish never
-          done
+          sh scripts/ffmpeg-dmg.sh
+          bunx electron-builder --mac dmg --arm64 --publish never
       - if: runner.os == 'Linux'
         run: bunx electron-builder --linux --publish never
       - uses: softprops/action-gh-release@v3

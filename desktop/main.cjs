@@ -9,6 +9,8 @@
 // the tsx watch one on :1299, so both hot-reload. Nothing is built and no data
 // folder is created here; the dev server uses its own (~/kino-dev).
 //
+// Settings: Cmd+, (Ctrl+, on Linux) or the app menu. Updates: desktop/updater.cjs, from GitHub releases, packaged app only.
+//
 // Electron's own folder (userData: cookies, storage, the single-instance lock) is Kino.app's unless
 // KINO_USER_DATA names another (scripts/desktop.sh in a worktree: a throwaway one) or this is a dev window
 // (~/Library/Application Support/Kino Dev). Sharing Kino.app's, a dev or worktree launch would find its lock
@@ -17,6 +19,7 @@ const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog, session } = 
 const path = require('node:path');
 const http = require('node:http');
 const { appOrigins, isAppUrl, isExternalOk, permissionOk } = require('./url-rules.cjs');
+const { start: startUpdater, check: checkForUpdates, menuItem: updateMenuItem } = require('./updater.cjs');
 
 const DEV_URL = process.env.KINO_DEV_URL || '';
 // Before anything reads userData and before requestSingleInstanceLock, which keeps its lock in there.
@@ -30,7 +33,7 @@ if (!DEV_URL) {
   process.env.KINO_DATA = process.env.KINO_DATA || path.join(app.getPath('userData'), 'data');
   process.env.KINO_LOG_FILE = process.env.KINO_LOG_FILE || path.join(app.getPath('userData'), 'kino.log');
   process.env.KINO_CLIENT_DIR = path.join(__dirname, '..', 'dist', 'client');
-  // The DMG's own ffmpeg and ffprobe (scripts/ffmpeg-arch.sh), not ffmpeg-static's, which is left out of it.
+  // The DMG's own ffmpeg and ffprobe (scripts/ffmpeg-dmg.sh), not ffmpeg-static's, which is left out of it.
   const ff = app.isPackaged ? path.join(process.resourcesPath, 'ffmpeg') : '';
   if (ff && require('node:fs').existsSync(path.join(ff, 'ffmpeg'))) {
     process.env.FFMPEG_BIN = process.env.FFMPEG_BIN || path.join(ff, 'ffmpeg');
@@ -43,6 +46,7 @@ const ORIGINS = appOrigins(URL, PAGE);
 
 let win = null;
 let tray = null;
+let rebuildTray = () => {};
 let lanUrl = URL;
 /** The server module when this app started it. Null when it attached to another Kino: that one is not ours to stop. */
 let server = null;
@@ -81,7 +85,7 @@ async function waitForPage() {
   throw new Error(`Vite is not answering at ${DEV_URL}.`);
 }
 
-function createWindow() {
+function createWindow(hash = '') {
   win = new BrowserWindow({
     width: 1280, height: 820, minWidth: 720, minHeight: 500, show: false,
     title: 'Kino', backgroundColor: '#000000', titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
@@ -93,7 +97,7 @@ function createWindow() {
   win.on('closed', () => { win = null; });
   guard(win.webContents);
   if (DEV_URL) win.webContents.openDevTools({ mode: 'detach' });
-  win.loadURL(PAGE);
+  win.loadURL(PAGE + hash);
 }
 
 /** External links (IMDb, addon sites) go to the system browser; only Kino's own origins load in a Kino window. */
@@ -122,13 +126,36 @@ function limitPermissions(ses) {
 
 function showWindow() { if (win) { win.show(); win.focus(); } else createWindow(); }
 
+/** Opens Settings in the window, the way a link to #/settings would. */
+function openSettings() {
+  if (!win) return createWindow('#/settings');
+  win.show(); win.focus();
+  win.webContents.executeJavaScript("location.hash = '#/settings'").catch(() => {});
+}
+
+/** The menu bar: the standard menus plus Settings (Cmd+,) and Check for Updates. */
+function createMenu() {
+  const mac = process.platform === 'darwin';
+  const settings = { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: openSettings };
+  const updates = app.isPackaged && !DEV_URL ? [{ label: 'Check for Updates…', click: () => checkForUpdates(true) }] : [];
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    ...(mac ? [{ label: app.name, submenu: [
+      { role: 'about' }, ...updates, { type: 'separator' }, settings, { type: 'separator' },
+      { role: 'services' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' },
+    ] }] : [{ label: 'File', submenu: [settings, ...updates, { type: 'separator' }, { role: 'quit' }] }]),
+    { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
+  ]));
+}
+
 function createTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, 'trayTemplate.png'));
   icon.setTemplateImage(true);
   tray = new Tray(icon);
   tray.setToolTip('Kino');
-  const rebuild = () => tray.setContextMenu(Menu.buildFromTemplate([
+  const rebuild = rebuildTray = () => tray.setContextMenu(Menu.buildFromTemplate([
+    ...(updateMenuItem() ? [updateMenuItem(), { type: 'separator' }] : []),
     { label: DEV_URL ? 'Open Kino (dev)' : 'Open Kino', click: showWindow },
+    { label: 'Settings…', click: openSettings },
     { label: `Phones and TVs: ${lanUrl}`, click: () => shell.openExternal(lanUrl) },
     { label: 'Open in browser', click: () => shell.openExternal(URL) },
     { type: 'separator' },
@@ -159,8 +186,11 @@ else {
   app.whenReady().then(async () => {
     limitPermissions(session.defaultSession);
     try { await startServer(); await waitForPage(); } catch (e) { dialog.showErrorBox('Kino', String(e.message || e)); app.quit(); return; }
+    createMenu();
     createTray();
     createWindow();
+    // A restart only stops playback when this app runs the server: an attached Kino keeps going.
+    if (app.isPackaged && !DEV_URL) startUpdater({ isBusy: async () => !!server && !!(await health())?.busy, onChange: () => rebuildTray() });
   });
   app.on('activate', showWindow);
   // Closing the window keeps the server alive for the rest of the house.

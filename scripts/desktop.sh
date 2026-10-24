@@ -1,5 +1,5 @@
 #!/bin/sh
-# bun run desktop (build, then the Electron app) and bun run desktop:dist (build, then an arm64 and an x64 DMG into release/).
+# bun run desktop (build, then the Electron app) and bun run desktop:dist (build, then the Apple Silicon DMG into release/).
 #   scripts/desktop.sh run | dist
 # Both build dist/, which the app loads and the DMG packs. In a checkout the launchd Kino serves (the WorkingDirectory
 # of ~/Library/LaunchAgents/com.kino.plist) that is the dist/ production serves from disk, so both refuse there unless
@@ -9,7 +9,8 @@
 # Electron gets a throwaway folder of its own too (KINO_USER_DATA, removed on exit): with Kino.app's, it would find
 # Kino.app's single-instance lock held and quit while Kino.app runs.
 # dist refuses a symlinked node_modules (a worktree borrowing the main checkout's): electron-builder packs
-# node_modules into the app, so the DMG needs this checkout's own bun install.
+# node_modules into the app, so the DMG needs this checkout's own bun install. It refuses on an Intel Mac too:
+# bun install fetches node-datachannel for the CPU it runs on, and an Intel binary in the arm64 app stops its server.
 set -e
 cd "$(dirname "$0")/.."
 mode=${1:-}
@@ -27,20 +28,15 @@ fi
 if [ "$mode" = dist ] && [ -L node_modules ]; then
   echo "Refusing: node_modules is a symlink (to $(readlink node_modules)) and electron-builder packs it into the app. Give this checkout its own install first: rm node_modules && bun install" >&2; exit 1
 fi
+if [ "$mode" = dist ] && [ "$(uname -m)" != arm64 ]; then
+  echo "Refusing: the DMG is for Apple Silicon and packs this checkout's native modules as installed. Build it on an Apple Silicon Mac." >&2; exit 1
+fi
 
 bun run build
 if [ "$mode" = dist ]; then
-  # One DMG per CPU, each packing that CPU's ffmpeg from vendor/ffmpeg (scripts/ffmpeg-arch.sh) and node-datachannel
-  # (scripts/native-arch.sh). The `dmg` target on the command line makes electron-builder build only the arch given;
-  # without it, it builds every arch in mac.target each time. This Mac's node-datachannel goes back at the end, built or not.
-  here=$(uname -m); [ "$here" = x86_64 ] && here=x64
-  trap 'sh scripts/native-arch.sh "$here"' EXIT
-  for arch in arm64 x64; do
-    sh scripts/ffmpeg-arch.sh "$arch"
-    sh scripts/native-arch.sh "$arch"
-    electron-builder --mac dmg --"$arch" --publish never
-  done
-  exit 0
+  # The DMG packs its own ffmpeg from vendor/ffmpeg (scripts/ffmpeg-dmg.sh).
+  sh scripts/ffmpeg-dmg.sh
+  exec electron-builder --mac dmg --arm64 --publish never
 fi
 
 if [ -n "$worktree" ]; then

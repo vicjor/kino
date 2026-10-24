@@ -35,7 +35,7 @@ Kino is a desktop app for macOS. It runs the server for the whole house and give
 
 ### 1. Get the app
 
-**Download it** (once a version is published). The [Releases page](https://github.com/vicjor/kino/releases) has a DMG for Apple Silicon (`arm64`), a DMG for Intel Macs and an AppImage for Linux for each version. The app is not signed with an Apple Developer ID, so macOS refuses the first open: in **System Settings, Privacy & Security**, choose **Open Anyway** next to the message about Kino (or run `xattr -dr com.apple.quarantine /Applications/Kino.app`).
+**Download it** (once a version is published). The [Releases page](https://github.com/vicjor/kino/releases) has a DMG for Apple Silicon Macs and an AppImage for Linux for each version. Intel Macs are not supported by the app (the server still runs there from a checkout). The app is not signed with an Apple Developer ID, so macOS refuses the first open: in **System Settings, Privacy & Security**, choose **Open Anyway** next to the message about Kino (or run `xattr -dr com.apple.quarantine /Applications/Kino.app`).
 
 **Or build it yourself.** You need git and [mise](https://mise.jdx.dev), which installs the Node and bun versions pinned in `mise.toml`:
 
@@ -44,7 +44,7 @@ git clone https://github.com/vicjor/kino.git
 cd kino
 mise install            # Node 26 and bun
 bun install             # dependencies
-bun run desktop:dist    # release/Kino-<version>-arm64.dmg (Apple Silicon) and release/Kino-<version>.dmg (Intel)
+bun run desktop:dist    # release/Kino-<version>-arm64.dmg (on an Apple Silicon Mac)
 open release
 ```
 
@@ -254,7 +254,7 @@ client/            Vite + React 19, hand-written CSS, PWA (no UI library)
 desktop/           Electron wrapper: window, tray, embedded server (main.cjs)
 launchd/           com.kino.plist.template, rendered with real paths by scripts/plist.sh (install.sh, make install-local)
 ops/               systemd user unit for Linux
-scripts/           install.sh, plist.sh, deploy-safe.sh and the pieces make shares with it (deploy-lock, restart, swap-dist, health-state), desktop.sh, ffmpeg-arch.sh, native-arch.sh
+scripts/           install.sh, plist.sh, deploy-safe.sh and the pieces make shares with it (deploy-lock, restart, swap-dist, health-state), desktop.sh, ffmpeg-dmg.sh
 test/              node:test unit tests
 docs/              specs/ (design and the why), security-advisories.md, screenshots/
 ```
@@ -324,9 +324,9 @@ If Kino already runs on :1234 (launchd, the desktop app), `bun run dev` refuses 
 
 `bun run desktop` runs the Electron app, `bun run desktop:dist` builds the DMGs into `release/`. Both rebuild `dist/`; in the checkout your launchd Kino serves (the service install above), that is the `dist/` it serves, so there they refuse unless `DEPLOY=1` is set. Anywhere else, a fresh clone or a `git worktree`, they just run. The Linux AppImage: `bun run build && bunx electron-builder --linux --publish never`. Run from a worktree, `bun run desktop` puts its server on :1299 with a throwaway data folder (`PORT` and `KINO_DATA` override), and dev and worktree windows get their own Electron app folder, so they run next to an installed Kino.app.
 
-Each DMG ships a native ffmpeg and ffprobe for its CPU: `scripts/ffmpeg-arch.sh` fetches jellyfin-ffmpeg's portable GPL build, pinned by version and checksum, and puts its licence and source link next to the binaries. `scripts/native-arch.sh` swaps in that CPU's `node-datachannel` binary (the one native module without binaries for both) and puts this Mac's back afterwards. `desktop:dist` builds one CPU at a time and packs `node_modules` as it is (every native module is Node-API), so run `bun install` in that checkout first, not a `node_modules` symlinked from another.
+The DMG is Apple Silicon only and ships a native ffmpeg and ffprobe: `scripts/ffmpeg-dmg.sh` fetches jellyfin-ffmpeg's portable GPL build, pinned by version and checksum, and puts its licence and source link next to the binaries. `desktop:dist` packs `node_modules` as it is (every native module is Node-API), so run `bun install` in that checkout first, not a `node_modules` symlinked from another, and on an Apple Silicon Mac: it refuses on Intel, whose `node-datachannel` binary would not load in the app.
 
-Releases: push a tag (`git tag v0.1.0 && git push origin v0.1.0`) and `.github/workflows/release.yml` builds the macOS DMGs and the Linux AppImage and attaches them to a GitHub release.
+Releases: push a tag (`git tag v0.1.0 && git push origin v0.1.0`) and `.github/workflows/release.yml` builds the macOS DMG and the Linux AppImage and attaches them to a GitHub release. The installed app checks that release and offers to update itself.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions.
 
