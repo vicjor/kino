@@ -8,7 +8,12 @@ on:
 
 jobs:
   check:
-    runs-on: macos-latest
+    # Linux too: the release builds the AppImage there and runs the tests first.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2

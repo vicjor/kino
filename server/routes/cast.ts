@@ -75,7 +75,7 @@ api.post('/cast/receivers/:id/:cmd', async (req, res) => {
   // The TV's power button, playing or not: on is Wake-on-LAN, off is an LG TV's own remote protocol.
   if (cmd === 'power') {
     const id = req.params.id as string;
-    if (!dlna.isDlnaId(id)) { res.status(400).json({ error: 'Kino can turn only the LG TV on and off' }); return; }
+    if (!dlna.isDlnaId(id)) { res.status(400).json({ error: 'Kino can turn only LG TVs on and off' }); return; }
     if (typeof req.body?.on !== 'boolean') { res.status(400).json({ error: 'Say on or off' }); return; }
     await dlna.power(id, req.body.on);
     res.json(dlna.receiverInfo(id) ?? null);
