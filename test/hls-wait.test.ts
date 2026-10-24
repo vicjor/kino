@@ -57,6 +57,11 @@ const afterStop = async (s: HlsSession, p: Promise<unknown>, ms = 50) => { await
 const AT_ONCE = 300;
 /** Folder watches and ref'd timers alive in this process. A closed handle leaves the list a loop turn later. */
 const live = async () => { await sleep(30); const r = process.getActiveResourcesInfo(); return { watches: r.filter((x) => x === 'FSEventWrap').length, timers: r.filter((x) => x === 'Timeout').length }; };
+/**
+ * The handles one recursive fs.watch holds: one on macOS (FSEvents), one per folder elsewhere (Node on Linux watches
+ * each folder with inotify), so there: the HLS folder plus each session's own.
+ */
+const oneWatch = (folders: number) => (process.platform === 'darwin' ? 1 : 1 + folders);
 const fds = () => fs.readdirSync('/dev/fd').length;
 
 test('waitReady wakes as ffmpeg writes the playlist, not on a timer', () => withPoll(NO_POLL, async () => {
@@ -146,13 +151,13 @@ test('one folder watch for every waiting session, closed with the last waiter; a
   assert.equal(before.watches, 0);
   stubAt(0.3, 30);
   const a = hls.start(opts()), b = hls.start(opts());
-  assert.deepEqual(await live(), { watches: 1, timers: before.timers + 1 }, 'both starting: one watch, one poll');
+  assert.deepEqual(await live(), { watches: oneWatch(2), timers: before.timers + 1 }, 'both starting: one watch, one poll');
   await Promise.all([hls.waitReady(a, 5000), hls.waitReady(b, 5000)]);
   assert.deepEqual(await live(), before, 'ready: nobody waits, nothing runs');
   stubAt(30);
   const c = hls.start(opts());
   const waits = [hls.waitFile(a, 'seg00001.ts', 20_000), hls.waitFile(b, 'seg00001.ts', 20_000), hls.waitReady(c, 20_000).catch((e) => e.status)];
-  assert.deepEqual(await live(), { watches: 1, timers: before.timers + 4 }, 'one watch, one poll, three wait timers');
+  assert.deepEqual(await live(), { watches: oneWatch(3), timers: before.timers + 4 }, 'one watch, one poll, three wait timers');
   const exits = [a, b, c].map((s) => once(s.proc!, 'exit'));
   for (const s of [a, b, c]) hls.stop(s.id);
   assert.deepEqual(await Promise.all(waits), [false, false, 410]);

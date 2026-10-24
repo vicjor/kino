@@ -32,6 +32,10 @@ case " $* " in *" --$FAIL_ARCH "*) exit 1 ;; esac
 `, { mode: 0o755 });
 // scripts/ffmpeg-arch.sh, stubbed: says so, and puts a marker for the arch where the real one unpacks its build.
 fs.writeFileSync(path.join(WT, 'scripts/ffmpeg-arch.sh'), 'echo "ffmpeg-arch $1"; mkdir -p "vendor/ffmpeg/$1"; printf "fake-%s" "$1" > "vendor/ffmpeg/$1/ffmpeg"\n');
+// scripts/native-arch.sh, stubbed: says which CPU's node-datachannel it puts in place.
+fs.writeFileSync(path.join(WT, 'scripts/native-arch.sh'), 'echo "native-arch $1"\n');
+/** This machine's CPU as the scripts name it: the node-datachannel desktop.sh puts back after packaging. */
+const HERE = os.arch() === 'arm64' ? 'arm64' : 'x64';
 
 function run(dir: string, mode: string, env: Record<string, string> = {}) {
   const r = spawnSync('sh', [path.join(dir, 'scripts/desktop.sh'), mode], { cwd: TMP, env: { ...ENV, ...env }, encoding: 'utf8' });
@@ -84,24 +88,29 @@ test('desktop.sh dist: refuses a symlinked node_modules, then packs one DMG per 
   assert.equal(refused.code, 1);
   assert.match(refused.out, /node_modules is a symlink .*bun install/);
   assert.doesNotMatch(refused.out, /bun run build \|/);
-  assert.doesNotMatch(refused.out, /^(ffmpeg-arch|electron-builder) /m);
+  assert.doesNotMatch(refused.out, /^(ffmpeg-arch|native-arch|electron-builder) /m);
 
   fs.unlinkSync(path.join(WT, 'node_modules'));
   fs.mkdirSync(path.join(WT, 'node_modules'));
   const r = run(WT, 'dist');
   assert.equal(r.code, 0, r.out);
-  // Build first, then per CPU: its ffmpeg, then its DMG with that ffmpeg. `dmg` named: without a target, --arm64 builds every arch in mac.target.
-  assert.deepEqual(r.out.split('\n').filter((l) => /^(bun|ffmpeg-arch|electron-builder|electron) /.test(l)).map((l) => l.replace(/^bun run build \|.*/, 'bun run build')), [
+  // Build first, then per CPU: its ffmpeg and node-datachannel, then its DMG. `dmg` named: without a target, --arm64 builds every
+  // arch in mac.target. This machine's node-datachannel goes back at the end.
+  assert.deepEqual(r.out.split('\n').filter((l) => /^(bun|ffmpeg-arch|native-arch|electron-builder|electron) /.test(l)).map((l) => l.replace(/^bun run build \|.*/, 'bun run build')), [
     'bun run build',
     'ffmpeg-arch arm64',
+    'native-arch arm64',
     'electron-builder --mac dmg --arm64 --publish never | ff=fake-arm64',
     'ffmpeg-arch x64',
+    'native-arch x64',
     'electron-builder --mac dmg --x64 --publish never | ff=fake-x64',
+    `native-arch ${HERE}`,
   ], 'and no electron app started');
 
   const failed = run(WT, 'dist', { FAIL_ARCH: 'arm64' });
   assert.equal(failed.code, 1, failed.out);
   assert.doesNotMatch(failed.out, /ffmpeg-arch x64|--x64/, 'stops at the first failed build');
+  assert.equal(failed.out.split('\n').filter((l) => l.startsWith('native-arch ')).at(-1), `native-arch ${HERE}`, 'and still puts this machine\'s node-datachannel back');
   fs.rmSync(path.join(WT, 'node_modules'), { recursive: true });
   fs.rmSync(path.join(WT, 'vendor'), { recursive: true });
 });

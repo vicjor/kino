@@ -30,10 +30,14 @@ fi
 
 bun run build
 if [ "$mode" = dist ]; then
-  # One DMG per CPU, each packing that CPU's ffmpeg from vendor/ffmpeg (scripts/ffmpeg-arch.sh). The `dmg` target on
-  # the command line makes electron-builder build only the arch given; without it, it builds every arch in mac.target each time.
+  # One DMG per CPU, each packing that CPU's ffmpeg from vendor/ffmpeg (scripts/ffmpeg-arch.sh) and node-datachannel
+  # (scripts/native-arch.sh). The `dmg` target on the command line makes electron-builder build only the arch given;
+  # without it, it builds every arch in mac.target each time. This Mac's node-datachannel goes back at the end, built or not.
+  here=$(uname -m); [ "$here" = x86_64 ] && here=x64
+  trap 'sh scripts/native-arch.sh "$here"' EXIT
   for arch in arm64 x64; do
     sh scripts/ffmpeg-arch.sh "$arch"
+    sh scripts/native-arch.sh "$arch"
     electron-builder --mac dmg --"$arch" --publish never
   done
   exit 0
