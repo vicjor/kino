@@ -251,8 +251,9 @@ client/            Vite + React 19, hand-written CSS, PWA (no UI library)
                    scrub (iOS scrubbing speeds), devices ("This iPhone")
   styles/          one CSS file per screen or component
   public/          web manifest, service worker, icons
-desktop/           Electron wrapper: window, tray, embedded server (main.cjs)
+desktop/           Electron wrapper: window, tray, embedded server (main.cjs), updater (updater.cjs)
 launchd/           com.kino.plist.template, rendered with real paths by scripts/plist.sh (install.sh, make install-local)
+licenses/          the GPL v3 text that goes next to the DMG's ffmpeg
 ops/               systemd user unit for Linux
 scripts/           install.sh, plist.sh, deploy-safe.sh and the pieces make shares with it (deploy-lock, restart, swap-dist, health-state), desktop.sh, ffmpeg-dmg.sh
 test/              node:test unit tests
