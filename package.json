@@ -121,7 +121,7 @@
         }
       ],
       "hardenedRuntime": false,
-      "identity": null
+      "identity": "-"
     },
     "linux": {
       "files": [
