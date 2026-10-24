@@ -14,12 +14,14 @@ jobs:
   desktop:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        # Ubuntu pinned: an AppImage runs only on systems with at least the glibc it was built against, so the
+        # oldest supported runner reaches the most Linux installs. ubuntu-latest moves to newer releases on its own.
+        os: [macos-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Node and bun as pinned in mise.toml, like ci.yml.
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: bun install --frozen-lockfile
       - run: bun run typecheck && bun run test
       - run: bun run build
@@ -34,7 +36,7 @@ jobs:
           done
       - if: runner.os == 'Linux'
         run: bunx electron-builder --linux --publish never
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             release/*.dmg
