@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 (2026-11-05)
+
+- On a Mac that also runs Kino as a background service, the desktop app waits for that server at login instead of starting a second one. Two Kinos on one port could fail to play ("Could not fetch this file") and showed the welcome tour again.
+- A second Kino started on a port already in use now stays idle, as intended, instead of loading its data and starting downloads.
+
 ## 0.1.1 (2026-10-24)
 
 - The desktop app updates itself: it checks for new releases, offers them and installs on a restart. Check for Updates is in the Kino menu. From 0.1.0, download this version by hand once.
