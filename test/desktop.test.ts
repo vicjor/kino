@@ -133,3 +133,14 @@ test('main.cjs: a dev window gets its own Electron folder (Kino Dev) before the 
   assert.deepEqual(launch(true, 'http://localhost:5174').slice(0, 2), [`setPath:userData:${APP_DATA}/Kino Dev`, 'lock']);
   assert.deepEqual(launch(true, 'http://localhost:5174', { KINO_USER_DATA: '/tmp/k' }).slice(0, 2), ['setPath:userData:/tmp/k', 'lock']);
 });
+
+const { plistPort } = require('../desktop/launchd.cjs') as { plistPort: (xml: unknown) => number };
+
+test('plistPort: the PORT a com.kino plist sets, else the server default', () => {
+  const plist = (env: string) => `<plist><dict><key>Label</key> <string>com.kino</string><key>EnvironmentVariables</key><dict>${env}<key>NODE_ENV</key> <string>production</string></dict></dict></plist>`;
+  assert.equal(plistPort(plist('<key>PORT</key>  <string>1234</string>')), 1234);
+  assert.equal(plistPort(plist('<key>PORT</key>\n        <string>1299</string>')), 1299);
+  assert.equal(plistPort(plist('')), 1234);
+  assert.equal(plistPort(''), 1234);
+  assert.equal(plistPort(undefined), 1234);
+});

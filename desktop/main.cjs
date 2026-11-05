@@ -18,7 +18,9 @@
 const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog, session } = require('electron');
 const path = require('node:path');
 const http = require('node:http');
+const fs = require('node:fs');
 const { appOrigins, isAppUrl, isExternalOk, permissionOk } = require('./url-rules.cjs');
+const { plistPort } = require('./launchd.cjs');
 const { start: startUpdater, check: checkForUpdates, menuItem: updateMenuItem } = require('./updater.cjs');
 
 const DEV_URL = process.env.KINO_DEV_URL || '';
@@ -35,7 +37,7 @@ if (!DEV_URL) {
   process.env.KINO_CLIENT_DIR = path.join(__dirname, '..', 'dist', 'client');
   // The DMG's own ffmpeg and ffprobe (scripts/ffmpeg-dmg.sh), not ffmpeg-static's, which is left out of it.
   const ff = app.isPackaged ? path.join(process.resourcesPath, 'ffmpeg') : '';
-  if (ff && require('node:fs').existsSync(path.join(ff, 'ffmpeg'))) {
+  if (ff && fs.existsSync(path.join(ff, 'ffmpeg'))) {
     process.env.FFMPEG_BIN = process.env.FFMPEG_BIN || path.join(ff, 'ffmpeg');
     process.env.FFPROBE_BIN = process.env.FFPROBE_BIN || path.join(ff, 'ffprobe');
   }
@@ -66,6 +68,15 @@ const reachable = (url) => new Promise((resolve) => {
   req.setTimeout(2000, () => { req.destroy(); resolve(false); });
 });
 
+/** How long to wait for a launchd Kino before starting our own server anyway (it is unloaded, or failing). */
+const LAUNCHD_WAIT_MS = 90_000;
+/** True when a launchd Kino (com.kino, scripts/install.sh) is installed for this user and serves PORT. */
+function launchdOnPort() {
+  if (process.platform !== 'darwin') return false;
+  try { return plistPort(fs.readFileSync(path.join(app.getPath('home'), 'Library', 'LaunchAgents', 'com.kino.plist'), 'utf8')) === PORT; }
+  catch { return false; }
+}
+
 async function startServer() {
   // Another Kino already on this port (a launchd install, a dev server)? Just attach to it.
   if (await health()) return 'attached';
@@ -73,6 +84,11 @@ async function startServer() {
     // tsx watch imports webtorrent and needs a few seconds to bind. Never start our own.
     for (let i = 0; i < 120; i++) { if (await health()) return 'attached'; await sleep(250); }
     throw new Error(`No Kino API on :${PORT}. Start dev with \`bun run dev:desktop\` (API, vite and this window together); its api output says why the server is not up.`);
+  }
+  // A launchd Kino on this port starts at login too, often after this app. Starting our own server then
+  // splits the house between two Kinos (our data folder is a different, empty one): wait for it instead.
+  if (launchdOnPort()) {
+    for (let i = 0; i < LAUNCHD_WAIT_MS / 500; i++) { if (await health()) return 'attached'; await sleep(500); }
   }
   server = await import(path.join(__dirname, '..', 'dist', 'server', 'index.js'));
   for (let i = 0; i < 60; i++) { if (await health()) return 'started'; await sleep(250); }

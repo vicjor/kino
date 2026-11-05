@@ -105,7 +105,12 @@ if (fs.existsSync(indexHtml)) {
 // Bind the port BEFORE touching shared state. A second instance (a stray
 // `tsx watch` next to the launchd service) must not wipe the HLS dir, rewrite
 // state.json or start torrents; it just notes the conflict and stays idle.
-const server = app.listen(PORT, '0.0.0.0', () => {
+// 'listening', not an app.listen callback: Express 5 calls that one with a bind error too.
+// Every bind on the same address: on macOS a later bind to [::] succeeds next to another
+// process on 0.0.0.0, and two Kinos then split one port by address family.
+const HOST = '0.0.0.0';
+const server = app.listen(PORT, HOST);
+server.once('listening', () => {
   log.info('listening', { port: PORT, lan: `http://${lanIp()}:${PORT}`, ffmpeg: hls.binStatus('ffmpeg').path, ffprobe: hls.binStatus('ffprobe').path });   // resolves both: logs which binary runs and why others were skipped
   ensureDirs();
   load();
@@ -148,7 +153,7 @@ function startPlainRedirect(): void {
 let bindTries = 0;
 server.on('error', (e: NodeJS.ErrnoException) => {
   if (e.code === 'EADDRINUSE') {
-    if (++bindTries <= 30) { if (bindTries === 1) log.warn('port in use, waiting for it', { port: PORT }); setTimeout(() => server.listen(PORT), 1000); return; }
+    if (++bindTries <= 30) { if (bindTries === 1) log.warn('port in use, waiting for it', { port: PORT }); setTimeout(() => server.listen(PORT, HOST), 1000); return; }
     log.warn('port in use: another Kino is already running, this process stays idle', { port: PORT });
     return;
   }
