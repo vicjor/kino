@@ -347,14 +347,17 @@ export function cacheTotal(): number {
 
 /**
  * Which cache entries to drop, least recently used first, until the total fits the cap. Kept ones (playing, loading,
- * downloaded for later) are skipped but still count.
+ * downloaded for later) are skipped but still count. The most recently used entry always stays: it is what was just
+ * watched, likely paused, and downloads past the cap would otherwise delete it ten minutes after its last read.
  */
 export function planEviction(entries: CacheEntry[], cap: number, keep: (infoHash: string) => boolean): string[] {
   let total = entries.reduce((a, e) => a + e.bytes, 0);
   const out: string[] = [];
-  for (const e of [...entries].sort((a, b) => a.lastUsed - b.lastUsed)) {
+  const byAge = [...entries].sort((a, b) => a.lastUsed - b.lastUsed);
+  const newest = byAge.at(-1);
+  for (const e of byAge) {
     if (total <= cap) break;
-    if (keep(e.infoHash)) continue;
+    if (e === newest || keep(e.infoHash)) continue;
     out.push(e.infoHash);
     total -= e.bytes;
   }

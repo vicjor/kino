@@ -221,30 +221,41 @@ test('planEviction: least recently used first, kept ones skipped but counted, st
   assert.deepEqual(torrent.planEviction(entries, 100, none), []);
   assert.deepEqual(torrent.planEviction(entries, 70, none), ['old']);
   assert.deepEqual(torrent.planEviction(entries, 40, none), ['old', 'mid']);
-  assert.deepEqual(torrent.planEviction(entries, 39, none), ['old', 'mid', 'new']);
+  assert.deepEqual(torrent.planEviction(entries, 39, none), ['old', 'mid'], 'the newest stays even past the cap');
   assert.deepEqual(torrent.planEviction(entries, 70, (h) => h === 'old'), ['mid']);
   assert.deepEqual(torrent.planEviction(entries, 0, (h) => h === 'new'), ['old', 'mid'], 'cannot reach the cap: active stays');
   assert.deepEqual(torrent.planEviction([], 0, none), []);
   assert.deepEqual(entries.map((x) => x.infoHash), ['new', 'old', 'mid'], 'input order untouched');
   const kept = new Set(['old', 'mid']);   // a playing one and a download for later
-  assert.deepEqual(torrent.planEviction(entries, 1, (h) => kept.has(h)), ['new'], 'a 1 GB cap still spares every kept one');
+  assert.deepEqual(torrent.planEviction(entries, 1, (h) => kept.has(h)), [], 'a 1 GB cap still spares every kept one, and the newest');
 });
 
-test('evict: a finished download for later stays, whatever the cap; a plain cache entry goes', async () => {
-  const d = H('a'), c = H('b');
+test('planEviction: downloads past the cap never take the episode just paused', () => {
+  const e = (h: string, bytes: number, lastUsed: number) => ({ infoHash: h, name: h, bytes, lastUsed });
+  const download = e('season', 106, 100), paused = e('episode', 6, 300), older = e('film', 20, 200);
+  const keep = (h: string) => h === 'season';
+  assert.deepEqual(torrent.planEviction([download, paused, older], 100, keep), ['film']);
+  assert.deepEqual(torrent.planEviction([download, paused], 100, keep), [], 'over the cap, but the paused episode stays');
+});
+
+test('evict: a finished download for later stays, whatever the cap; a plain cache entry goes, the newest stays', async () => {
+  const d = H('a'), c = H('b'), n = H('c');
   const cap = store.getState().settings.cacheCapBytes;
   store.update((s) => {
     s.settings.cacheCapBytes = 10;   // typing a lower cache limit
     s.cacheIndex[d] = { infoHash: d, name: 'Saved.mkv', bytes: 80, lastUsed: 1 };   // least recently used, nothing open
     s.cacheIndex[c] = { infoHash: c, name: 'Watched.mkv', bytes: 80, lastUsed: 2 };
+    s.cacheIndex[n] = { infoHash: n, name: 'Paused.mkv', bytes: 80, lastUsed: 3 };   // just watched
     s.downloads[`${d}:0`] = { key: `${d}:0`, infoHash: d, fileIdx: 0, type: 'movie', name: 'Saved', sizeBytes: 80, addedAt: 1, done: true, doneAt: 2 };
   });
   assert.equal(torrent.isActive(d), false);
   assert.deepEqual(await torrent.evict(), [c]);
   assert.ok(store.getState().cacheIndex[d], 'the download is still in the cache');
   assert.equal(store.getState().cacheIndex[c], undefined);
+  assert.ok(store.getState().cacheIndex[n], 'the one just watched is still in the cache, past the cap');
   store.update((s) => { delete s.downloads[`${d}:0`]; s.settings.cacheCapBytes = cap; });
   await torrent.remove(d);
+  await torrent.remove(n);
 });
 
 test('evict: calls at once run one after the other, nothing removed twice, a loading torrent is left alone', async () => {
@@ -255,8 +266,8 @@ test('evict: calls at once run one after the other, nothing removed twice, a loa
   await Promise.resolve();
   store.update((s) => {
     s.settings.cacheCapBytes = 100;
-    s.cacheIndex[h] = { ...s.cacheIndex[h], bytes: 80, lastUsed: 2 };
-    s.cacheIndex[g] = { infoHash: g, name: 'g', bytes: 80, lastUsed: 1 };
+    s.cacheIndex[h] = { ...s.cacheIndex[h], bytes: 80, lastUsed: 1 };
+    s.cacheIndex[g] = { infoHash: g, name: 'g', bytes: 80, lastUsed: 2 };   // the newest, and loading: kept twice over
   });
   const [a, b] = await Promise.all([torrent.evict(), torrent.evict()]);
   assert.deepEqual(a, [h]);

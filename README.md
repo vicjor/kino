@@ -199,6 +199,7 @@ server/            Express API and everything behind it (TypeScript, ESM)
   csrf.ts          refuses a write that a page on another site sent (403)
   pin.ts           KINO_PIN: cookie token, wrong-PIN pauses, the media URLs TVs fetch without the cookie
   health.ts        busy: what a restart would interrupt
+  awake.ts         keeps the Mac from idle-sleeping while someone watches, and for an hour after
   lifecycle.ts     orphaned transcoders at boot, 503 while stopping, the shutdown sequence
   net-guard.ts     outbound fetches from addon-supplied URLs: refuses private and loopback targets, walks redirects by hand
   errors.ts        httpError, safe state keys, the JSON error handler
@@ -274,6 +275,7 @@ Everything user-facing lives in **Settings** inside the app: addons (paste a man
 | `KINO_CLIENT_DIR` | `dist/client` | built client to serve |
 | `FFMPEG_BIN`, `FFPROBE_BIN` | first that runs: ffmpeg-static / ffprobe-static, Homebrew, `/usr/local/bin`, MacPorts, `PATH` | override the binary. Used as given; the log warns if it does not run |
 | `KINO_NO_HW` | unset | set to disable VideoToolbox hardware encoding |
+| `KINO_KEEP_AWAKE` | on | macOS only: Kino stops the Mac idle-sleeping (`caffeinate -i`, on battery too) while a TV, a transcode or a stream is in use and for an hour after, so a paused film resumes. Closing the lid still sleeps it. `off` disables |
 | `KINO_PIN` | unset | ask for this PIN before showing the library. Media URLs stay open to GET and HEAD for TVs. Every 5 wrong PINs from one visitor, or 30 from everyone, pause logins for a minute, then twice as long each time, up to an hour |
 | `KINO_HOSTS` | unset | more host names Kino answers to, comma-separated (`kino.home.arpa`, or `.example.org` for every name under it). IP addresses, `localhost`, `.local` and `.ts.net` names and this Mac's own name always work; any other name gets 421, which stops DNS rebinding |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |

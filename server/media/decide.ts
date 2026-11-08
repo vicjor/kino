@@ -41,7 +41,13 @@ function copyableVideo(target: Target, caps: Caps = {}): string[] {
   return [];
 }
 
-/** What each target plays as is. The old Chromecast: MP4, H.264, AAC or MP3, nothing else. */
+/**
+ * Surround AAC the old Chromecast refuses: a 5.1 AAC track fails the load at once (receiver ERROR, every try), stereo
+ * plays. So for it, more than two channels means converting the audio to stereo AAC (hls.ts), video copied as it is.
+ */
+const surroundOnChromecast = (target: Target, a: ProbeInfo['audio'][number] | undefined): boolean => target === 'chromecast' && (a?.channels ?? 2) > 2;
+
+/** What each target plays as is. The old Chromecast: MP4, H.264, AAC or MP3 in stereo, nothing else. */
 function directRule(target: Target, extra: string[]): { containers: string[]; video: string[]; audio: Set<string> } {
   if (target === 'browser') return { containers: ['mp4', 'mkv', 'webm'], video: ['h264', 'vp8', 'vp9', ...extra], audio: AUDIO_WEB };
   if (target === 'ios') return { containers: ['mp4'], video: ['h264', ...extra], audio: AUDIO_MP4 };
@@ -57,6 +63,7 @@ function directBlocker(p: ProbeInfo, target: Target, a: ProbeInfo['audio'][numbe
   if (!r.containers.includes(p.container) || (target === 'browser' && p.container === 'mkv' && opts.caps?.mkv === false)) return `${p.container} container not supported on ${target}`;
   if (!r.video.includes(v)) return `${v} video not supported on ${target}`;
   if (!r.audio.has(ac)) return `${ac} audio not supported on ${target}`;
+  if (surroundOnChromecast(target, a)) return `${a?.channels}-channel ${ac} audio not supported on ${target}`;
   if (a && p.audio.indexOf(a) > 0) return 'only the first audio track plays directly';
   return undefined;
 }
@@ -73,7 +80,7 @@ export function decide(p: ProbeInfo, target: Target, opts: DecideOpts = {}): Dec
   if (!reason) return { mode: 'direct', videoCopy: true, audioCopy: true, segment: 'fmp4', audioIndex };
 
   const videoCopy = !hdr && (v === 'h264' || extra.includes(v));
-  const audioCopy = ac === 'aac';
+  const audioCopy = ac === 'aac' && !surroundOnChromecast(target, a);
   const segment: Decision['segment'] = target === 'chromecast' ? 'mpegts' : 'fmp4';
   return { mode: videoCopy ? 'hls-copy' : 'hls-transcode', reason, videoCopy, audioCopy, segment, audioIndex };
 }

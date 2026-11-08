@@ -17,6 +17,7 @@ import * as rails from './discover.js';
 import { ensureDatasets, datasetAge } from './ratings.js';
 import { freeBytes } from './disk.js';
 import { isBusy, watching } from './health.js';
+import * as awake from './awake.js';
 import { pinToken, sameSecret, cookieValues, pinAttempts, attemptKey, pinOpen, pauseText, shortPin, LONG_PAUSE_MS } from './pin.js';
 import { secretKey } from './subs/ids.js';
 import { api } from './routes/index.js';
@@ -52,8 +53,11 @@ const cookieToken = (pin: string) => (token ||= pinToken(pin, secretKey()));
 /** No PIN, or this browser holds the cookie the right PIN set. */
 const unlocked = (req: express.Request) => !PIN || cookieValues(req.headers.cookie, 'kino_auth').some((v) => sameSecret(v, cookieToken(PIN)));
 
+/** Who is watching now: what /health reports, the deploy scripts read and keeps the Mac awake (awake.ts). */
+const viewersNow = () => watching({ openStreams: torrent.openStreams(), transcoderStreams: torrent.transcoderStreams(), held: downloads.heldCount(), sessions: hls.active(), cast: cast.status().active });
+
 app.get('/health', (req, res) => {
-  const viewers = watching({ openStreams: torrent.openStreams(), transcoderStreams: torrent.transcoderStreams(), held: downloads.heldCount(), sessions: hls.active(), cast: cast.status().active });
+  const viewers = viewersNow();
   const uptime = Math.round((Date.now() - started) / 1000), busy = isBusy(viewers);
   // Locked out: only what the deploy scripts read (busy, uptime for the restart check). No paths, names or devices.
   if (!unlocked(req)) { res.json({ ok: true, version: VERSION, uptime, busy }); return; }
@@ -125,6 +129,7 @@ server.once('listening', () => {
   monitor.start();
   downloads.start();
   startPlainRedirect();
+  awake.start(() => isBusy(viewersNow()));
   setTimeout(() => void ensureDatasets(), 15_000).unref();   // IMDb dumps ready before anyone opens a title
   setTimeout(() => rails.warm(), 3_000).unref();               // Home rails ready before the first visit
   setInterval(() => hls.reaper(), 30_000).unref();
@@ -178,7 +183,7 @@ export function shutdown(why = 'quit'): Promise<void> {
         ['events', announceShutdown],
         ['listen', () => { server.close(); plain?.close(); }],   // no new connections: nothing starts a transcode behind our back
         ['hls', hls.stopAll],
-        ['downloads', downloads.stop], ['monitor', monitor.stop], ['dlna', dlna.stopDiscovery], ['discovery', discovery.stop], ['mdns', mdnsName.stop],
+        ['downloads', downloads.stop], ['monitor', monitor.stop], ['dlna', dlna.stopDiscovery], ['discovery', discovery.stop], ['mdns', mdnsName.stop], ['awake', awake.stop],
       ],
       cast: () => cast.stop(false),
       torrent: torrent.shutdown,

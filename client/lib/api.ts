@@ -10,6 +10,8 @@ import type {
 class ApiError extends Error { constructor(public status: number, msg: string, public code?: string) { super(msg); } }
 /** The server's `code` for what kind of failure this was (server ErrorCode), when it sent one. Words come from the client, never from its text. */
 export const errorCode = (e: unknown): string | undefined => (e instanceof ApiError ? e.code : undefined);
+/** The request never reached Kino (no connection, the Mac asleep or off): nothing about the source. */
+export const isOffline = (e: unknown): boolean => e instanceof ApiError && e.status === 0;
 
 /**
  * Last good answer per GET url, so a screen you have seen paints at once and a dropped request shows the old

@@ -20,6 +20,15 @@ test('chromecast: mp4 h264 aac direct, hevc transcodes with mpegts, ac3 -> aac',
   const d = decide(p({ video: { codec: 'hevc' }, audio: [{ index: 1, codec: 'ac3' }] }), 'chromecast');
   assert.equal(d.mode, 'hls-transcode'); assert.equal(d.segment, 'mpegts'); assert.equal(d.audioCopy, false); assert.equal(d.videoCopy, false);
 });
+test('chromecast: surround aac is converted to stereo, video copied; stereo aac still plays direct', () => {
+  const surround = decide(p({ container: 'mp4', audio: [{ index: 1, codec: 'aac', channels: 6 }] }), 'chromecast');
+  assert.equal(surround.mode, 'hls-copy'); assert.equal(surround.videoCopy, true); assert.equal(surround.audioCopy, false); assert.equal(surround.segment, 'mpegts');
+  assert.match(surround.reason || '', /6-channel aac/);
+  assert.equal(decide(p({ container: 'mp4', audio: [{ index: 1, codec: 'aac', channels: 2 }] }), 'chromecast').mode, 'direct');
+  assert.equal(decide(p({ container: 'mkv', audio: [{ index: 1, codec: 'aac', channels: 6 }] }), 'chromecast').audioCopy, false, 'an mkv copied to HLS converts it too');
+  assert.equal(decide(p({ container: 'mp4', audio: [{ index: 1, codec: 'aac', channels: 6 }] }), 'browser').mode, 'direct', 'other targets keep 5.1');
+  assert.equal(decide(p({ container: 'mp4', audio: [{ index: 1, codec: 'aac', channels: 6 }] }), 'ios').mode, 'direct');
+});
 test('browser hevc: copy only when client says it can', () => {
   assert.equal(decide(p({ video: { codec: 'hevc' } }), 'browser').mode, 'hls-transcode');
   assert.equal(decide(p({ video: { codec: 'hevc' } }), 'browser', { caps: { hevc: true } }).mode, 'direct');

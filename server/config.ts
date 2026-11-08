@@ -24,6 +24,8 @@ export const HOSTS = process.env.KINO_HOSTS;
 export const PIN = process.env.KINO_PIN;
 /** KINO_NO_HW: set to anything to turn VideoToolbox hardware encoding off (media/hls.ts). */
 export const NO_HW = !!process.env.KINO_NO_HW;
+/** KINO_KEEP_AWAKE: `off` (or 0, false, no) lets the Mac sleep while someone watches (awake.ts). */
+export const KEEP_AWAKE = process.env.KINO_KEEP_AWAKE;
 /** LOG_LEVEL: the lowest level logged: debug, info, warn or error. Default info. */
 export const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 /** KINO_LOG_FILE: also append every log line to this file, rotated (log.ts). Unset: stdout and stderr only. */

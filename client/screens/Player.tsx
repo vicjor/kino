@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as RMouseEvent } from 'react';
 import type { PlayResponse, SubtitleTrack, Episode, Meta, Source, PickOutcome, Progress } from '../../server/types.js';
-import { api, errorCode } from '../lib/api';
+import { api, errorCode, isOffline } from '../lib/api';
 import { resumePoint } from '../lib/progress';
 import { useRoute, navigate, readPlayParams, playUrl, titleUrl, back, leaveTo } from '../lib/router';
 import { target, caps, isIOS, isTouch } from '../lib/player-caps';
@@ -147,7 +147,8 @@ function LocalPlayer() {
   const outcomeRef = useRef(outcome); outcomeRef.current = outcome;
 
   // ---- failure: one place, plain words, a hint, the raw detail, and a way back ----
-  const [errInfo, setErrInfo] = useState<{ hint?: string; detail?: string; retry?: boolean } | null>(null);
+  // `lost`: Kino itself does not answer (the Mac asleep or off the network), so another source or a TV cannot help.
+  const [errInfo, setErrInfo] = useState<{ hint?: string; detail?: string; retry?: boolean; lost?: boolean } | null>(null);
   const retryFrom = useRef<number | null>(null);
   // Places you were: the resume point and where a big jump back started. Shown as dots on the seek bar, tap to return.
   const [marks, setMarks] = useState<{ t: number; label: string }[]>([]);
@@ -159,14 +160,15 @@ function LocalPlayer() {
   const autoRetries = useRef(0);
   const retryRef = useRef<() => void>(() => undefined);
   // `code` is the server's (ErrorCode): a full disk or a broken program is shown at once, no quiet retries.
-  const fail = useCallback((msg: string, info: { hint?: string; detail?: string; retry?: boolean; code?: string } = {}) => {
+  const fail = useCallback((msg: string, info: { hint?: string; detail?: string; retry?: boolean; code?: string; lost?: boolean } = {}) => {
     if (info.code === 'no-peers' || info.code === 'unreadable') outcomeRef.current(info.code);
     if (info.retry && autoRetry(info.code) && autoRetries.current < 2) {
       autoRetries.current++;
       setBuffering(true);
       showNotice({ text: 'Reconnecting…' }, 25_000);
       const until = Date.now() + 25_000;
-      const probe = () => api.health().then(() => { setNotice(null); retryRef.current(); }).catch(() => { if (Date.now() < until) setTimeout(probe, 1500); else { setNotice(null); setErr(msg); setErrInfo(info); setBuffering(false); } });
+      // Still no answer after all that: Kino is out of reach, whatever the first failure looked like.
+      const probe = () => api.health().then(() => { setNotice(null); retryRef.current(); }).catch(() => { if (Date.now() < until) setTimeout(probe, 1500); else { setNotice(null); setErr(MEDIA.lost.msg); setErrInfo({ hint: MEDIA.lost.hint, detail: info.detail, retry: true, lost: true }); setBuffering(false); } });
       setTimeout(probe, 1200);
       return;
     }
@@ -255,6 +257,7 @@ function LocalPlayer() {
         await startAt(resp, start);
       } catch (e) {
         if (dead) return;
+        if (isOffline(e)) { fail(MEDIA.lost.msg, { hint: MEDIA.lost.hint, retry: true, lost: true }); return; }
         const code = errorCode(e);
         const w = startWords(code);
         fail(w.msg, { hint: w.hint, detail: (e as Error).message, retry: true, code });
@@ -892,8 +895,8 @@ function LocalPlayer() {
           {errInfo?.detail ? <code className="perror-detail">{errInfo.detail}</code> : null}
           <div className="perror-actions">
             {errInfo?.retry ? <button className="btn primary" onClick={retry}>Try again</button> : null}
-            {!p.magnet && p.videoId ? <button className={`btn${errInfo?.retry ? '' : ' primary'}`} onClick={() => setSrcOpen({ reason: err })}>Switch source</button> : <button className={`btn${errInfo?.retry ? '' : ' primary'}`} onClick={leave}>Choose another source</button>}
-            <button className="btn" onClick={() => setCastOpen(true)}>Play on a TV</button>
+            {errInfo?.lost ? null : !p.magnet && p.videoId ? <button className={`btn${errInfo?.retry ? '' : ' primary'}`} onClick={() => setSrcOpen({ reason: err })}>Switch source</button> : <button className={`btn${errInfo?.retry ? '' : ' primary'}`} onClick={leave}>Choose another source</button>}
+            {errInfo?.lost ? null : <button className="btn" onClick={() => setCastOpen(true)}>Play on a TV</button>}
           </div>
         </div>
       ) : null}
