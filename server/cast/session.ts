@@ -81,6 +81,8 @@ export class CastSession extends EventEmitter {
   private player?: DefaultMediaReceiver;
   private poll?: NodeJS.Timeout;
   private polling = false;
+  /** Takes the receiver error logger off the media channel (connect sets it). */
+  private offErrors = (): void => {};
   private closed = false;
   private waiting = new Set<(e: Error) => void>();
   last?: RawStatus;
@@ -104,6 +106,13 @@ export class CastSession extends EventEmitter {
           settled = true; clearTimeout(to);
           this.player = player;
           player.on('status', (s: MediaStatus) => this.onStatus(s));
+          // The receiver's own reason when playback fails (Cast's detailedErrorCode), for the log: a refused stream says why.
+          const media = mediaOf(player);
+          const onMessage = (m: { type?: string; detailedErrorCode?: number; reason?: string } | null) => {
+            if (m?.type === 'ERROR' || m?.type === 'LOAD_FAILED') log.info('receiver error', { type: m.type, code: m.detailedErrorCode, reason: m.reason });
+          };
+          media?.on('message', onMessage);
+          this.offErrors = () => media?.removeListener('message', onMessage);
           player.on('close', () => this.destroy());
           this.poll = setInterval(() => this.pollStatus(player), 2000);
           this.poll.unref();
@@ -168,6 +177,7 @@ export class CastSession extends EventEmitter {
     if (this.closed) return;
     this.closed = true;
     if (this.poll) clearInterval(this.poll);
+    this.offErrors();
     try { this.player?.close(); } catch { /* ignore */ }
     try { this.client.close(); } catch { /* ignore */ }
     for (const fail of [...this.waiting]) fail(httpError(502, 'Chromecast connection closed'));

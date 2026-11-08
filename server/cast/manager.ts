@@ -6,7 +6,7 @@ import { getState, saveProgress, getProgress, update, saveSubChoice, MIN_PROGRES
 import { ensure, pickVideoFile, getTorrent } from '../torrent.js';
 import { guard } from '../disk.js';
 import { probe } from '../media/probe.js';
-import { decide, pickAudio } from '../media/decide.js';
+import { decide, pickAudio, convertAll, saferStep, type Decision } from '../media/decide.js';
 import * as hls from '../media/hls.js';
 import { mimeFor } from '../media/range.js';
 import { listSubtitles, getVtt } from '../subs/index.js';
@@ -31,6 +31,11 @@ interface Current {
   session: CastSession;
   req: CastPlayRequest;
   infoHash: string; fileIdx: number; mode: PlayMode; hlsId?: string; startOffset: number; duration: number;
+  /**
+   * What was sent, and whether in software: what a safer try steps on from (refused). `safer`: this is one, and a seek
+   * keeps it (the TV refused the plain stream once already). `loadedAt`: when the TV took it.
+   */
+  decision: Decision; sw: boolean; safer?: 1 | 2; loadedAt: number;
   tracks: { trackId: number; sub: SubtitleTrack }[]; activeSubId?: string; subOffsetMs: number;
   raw?: RawStatus; rawAt: number; lastSave: number; finished: boolean; loading: boolean;
   /** When the pause began and the last keep-awake seek (keepawake.ts). A nudge passes through BUFFERING, which keeps the pause. */
@@ -42,8 +47,11 @@ interface Current {
 }
 /** A subtitle list and the file it was looked up for. `done`: the file was complete then (embedded tracks count only once it is). */
 interface KnownSubs { infoHash: string; fileIdx: number; done: boolean; list: SubtitleTrack[] }
-/** `subs`: the list of the cast a seek or subtitle shift restarts, so the same file needs no new lookup (file hash, addon calls). */
-type CastOpts = { preferLang?: string; subs?: KnownSubs };
+/**
+ * `subs`: the list of the cast a seek or subtitle shift restarts, so the same file needs no new lookup (file hash, addon calls).
+ * `safer`: a try after the TV could not play the last stream (decide.saferStep).
+ */
+type CastOpts = { preferLang?: string; subs?: KnownSubs; safer?: 1 | 2 };
 
 /** What a start reaches outside this module. Tests swap these for fakes. */
 export const io = {
@@ -60,7 +68,7 @@ export const io = {
   },
   subtitles: listSubtitles,
   connect: async (host: string, port: number): Promise<CastSession> => { const s = new CastSession(host, port); await s.connect(); return s; },
-  hls: { start: hls.start, waitReady: hls.waitReady, stop: hls.stop, revive: hls.revive },
+  hls: { start: hls.start, waitReady: hls.waitReady, stop: hls.stop, revive: hls.revive, hw: hls.hwEnabled },
   /** What auto-next and Next ask the network: the series and the sources of an episode. */
   meta: getMeta,
   streams: getStreams,
@@ -68,6 +76,10 @@ export const io = {
 
 let cur: Current | null = null;
 let lastStatus: CastStatus = { active: false };
+/** Why the last cast ended when the TV could not play it, even converted. The phone shows it until the next command. */
+let refusal: string | undefined;
+/** An ERROR this soon after the TV took a stream means it could not play it, not a hiccup mid-film. */
+const REFUSED_MS = 60_000;
 
 // ------------------------------------------------------------- ordering ----
 // castTo and stop each take the next generation. A start checks it after every await and gives
@@ -88,7 +100,7 @@ let target: string | null = null;
 let pending: { gen: number; deviceId: string; req?: CastPlayRequest; opts?: CastOpts; restart?: boolean } | null = null;
 
 function begin(deviceId: string, more: { req?: CastPlayRequest; opts?: CastOpts; restart?: boolean } = {}): number {
-  const gen = nextGen(); target = deviceId; pending = { gen, deviceId, ...more };
+  const gen = nextGen(); target = deviceId; pending = { gen, deviceId, ...more }; refusal = undefined;
   return gen;
 }
 function settle(gen: number): void { if (pending?.gen === gen) pending = null; }
@@ -138,7 +150,7 @@ function base(): string { return `http://${lanIp()}:${PORT}`; }
 export function status(): CastStatus { return upnext.decorate(dlna.active() ? dlna.status() : lastStatus); }
 
 function publish(): void {
-  if (!cur) { lastStatus = { active: false }; emit('cast.status', status()); return; }
+  if (!cur) { lastStatus = refusal ? { active: false, error: refusal } : { active: false }; emit('cast.status', status()); return; }
   const r = cur.raw;
   const to = restartOf(cur)?.startTime;   // a seek still starting: say where it goes
   lastStatus = {
@@ -161,7 +173,11 @@ function onStatus(c: Current, s: RawStatus): void {
   // While it loads, or while a newer start for this TV is on its way, an idle receiver ends nothing: the next load replaces it.
   const settled = !c.loading && !replacing(c);
   if (s.state === 'IDLE' && s.idleReason === 'FINISHED' && !c.finished && settled) { c.finished = true; void onFinished(c); }
-  else if (s.state === 'IDLE' && (s.idleReason === 'CANCELLED' || s.idleReason === 'ERROR') && settled) { log.info('receiver idle', { reason: s.idleReason }); void teardown(c, false); return; }
+  else if (s.state === 'IDLE' && (s.idleReason === 'CANCELLED' || s.idleReason === 'ERROR') && settled) {
+    log.info('receiver idle', { reason: s.idleReason });
+    void (s.idleReason === 'ERROR' && Date.now() - c.loadedAt < REFUSED_MS ? refused(c) : teardown(c, false));
+    return;
+  }
   if (s.state === 'PAUSED') c.pausedAt ??= Date.now();
   else if (s.state !== 'BUFFERING') c.pausedAt = c.nudgedAt = undefined;
   if (s.state === 'PAUSED' && settled && shouldNudge(c.pausedAt!, c.nudgedAt || 0, Date.now())) {
@@ -303,7 +319,9 @@ async function start(gen: number, signal: AbortSignal, req: CastPlayRequest, opt
   const { t, idx, local, probe: p } = await io.media(req.infoHash, req.fileIdx);
   if (gone()) return status();
   const audioIndex = pickAudio(p, req.audioTrack, ['eng', ...getState().settings.subLangs]);
-  const d = decide(p, 'chromecast', { hdr: p.hdr, audioIndex });
+  const first = decide(p, 'chromecast', { hdr: p.hdr, audioIndex });
+  const d = opts.safer ? convertAll(first, 'the TV could not play the first stream') : first;
+  const sw = opts.safer === 2;
   const type = req.videoId?.includes(':') && !req.videoId.startsWith('magnet:') ? 'series' : 'movie';
   const done = (t.files[idx]?.progress ?? 0) >= 1;
   let known = opts.subs && opts.subs.infoHash === t.infoHash && opts.subs.fileIdx === idx && opts.subs.done === done ? opts.subs : undefined;
@@ -328,7 +346,7 @@ async function start(gen: number, signal: AbortSignal, req: CastPlayRequest, opt
   if (d.mode === 'direct') { url = `${base()}/api/file/${t.infoHash}/${idx}`; contentType = mimeFor(t.files[idx].name); }
   else {
     // The old cast's ffmpeg is parked here when it is the same file (the TV plays on from what it made), stopped otherwise.
-    const s = io.hls.start({ infoHash: t.infoHash, fileIdx: idx, sourceUrl: local, startOffset, decision: d, probe: p, owner: 'cast' });
+    const s = io.hls.start({ infoHash: t.infoHash, fileIdx: idx, sourceUrl: local, startOffset, decision: d, probe: p, owner: 'cast', triedSwEncode: sw });
     hlsId = s.id; url = `${base()}/api/hls/${s.id}/index.m3u8`; contentType = 'application/vnd.apple.mpegurl';
     // Wait for the first segment: fail here with a real error instead of on the
     // TV, and learn the measured start (copy mode begins at the previous keyframe)
@@ -365,7 +383,7 @@ async function start(gen: number, signal: AbortSignal, req: CastPlayRequest, opt
   const active = tracks.find((x) => x.sub.id === activeSubId);
 
   const upnextToken = Math.random().toString(36).slice(2, 10);
-  const c: Current = { device: dev, session, req, infoHash: t.infoHash, fileIdx: idx, mode: d.mode, hlsId, startOffset, duration: p.duration, tracks, activeSubId, subOffsetMs, rawAt: 0, lastSave: 0, finished: false, loading: true, upnextToken, upnextTrackId: tracks.length + 1, subs: known };
+  const c: Current = { device: dev, session, req, infoHash: t.infoHash, fileIdx: idx, mode: d.mode, decision: d, sw, safer: opts.safer, loadedAt: 0, hlsId, startOffset, duration: p.duration, tracks, activeSubId, subOffsetMs, rawAt: 0, lastSave: 0, finished: false, loading: true, upnextToken, upnextTrackId: tracks.length + 1, subs: known };
   if (old && reuse) release(old);   // the new stream is ready: save where the old one was, stop its ffmpeg
   commit(c);
 
@@ -383,7 +401,7 @@ async function start(gen: number, signal: AbortSignal, req: CastPlayRequest, opt
     // Netflix look: clean white sans, no box, soft black shadow, a touch larger than the receiver default.
     textTrackStyle: { backgroundColor: '#00000000', foregroundColor: '#FFFFFFFF', edgeType: 'DROP_SHADOW', edgeColor: '#000000FF', fontScale: 1.25, fontFamily: 'Droid Sans', fontGenericFamily: 'SANS_SERIF', fontStyle: 'NORMAL', windowType: 'NONE' },
   };
-  log.info('load', { device: dev.name, mode: d.mode, url, sub: active?.sub.label, startOffset, reason: d.reason });
+  log.info('load', { device: dev.name, mode: d.mode, url, sub: active?.sub.label, startOffset, reason: d.reason, ...(sw ? { sw } : {}) });
   try {
     // HLS sessions begin at the keyframe before the requested second: land on the second itself.
     await session.load(media, { currentTime: d.mode === 'direct' ? (req.startTime || 0) : Math.max(0, (req.startTime || 0) - startOffset), activeTrackIds: active ? [active.trackId] : [] });
@@ -393,7 +411,7 @@ async function start(gen: number, signal: AbortSignal, req: CastPlayRequest, opt
     if (cur === c) await teardown(c, false);
     throw httpError(502, `Chromecast refused the stream: ${errMsg(e)}`);
   }
-  c.loading = false;
+  c.loading = false; c.loadedAt = Date.now();
   if (gone()) return status();
   // A subtitle picked while the TV loaded went to c.activeSubId, not the TV (setSubtitle): show it now, and the next one while it switches.
   for (let sent = active?.sub.id; c.activeSubId !== sent && !gone();) {
@@ -430,6 +448,30 @@ function release(c: Current): void {
   if (c.hlsId) io.hls.stop(c.hlsId);
 }
 
+/**
+ * The TV could not play what it was sent (receiver ERROR right after the load: 5.1 audio the old Chromecast refuses, a
+ * hardware encode it would not take). The same spot again as a safer stream, same subtitle; with nothing safer left, the
+ * cast ends and the phone says why instead of only "stopped".
+ */
+async function refused(c: Current): Promise<void> {
+  const step = saferStep(c.decision, c.sw, io.hls.hw());
+  if (!step) {
+    refusal = refusedText(c.device.name);
+    log.warn('the TV could not play it, nothing safer left', { device: c.device.name, mode: c.mode, sw: c.sw });
+    await teardown(c, false);
+    return;
+  }
+  log.info('the TV could not play it, trying a safer stream', { device: c.device.name, from: c.mode, step });
+  const subLang = c.activeSubId ? c.tracks.find((t) => t.sub.id === c.activeSubId)?.sub.lang : undefined;
+  const req = { ...c.req, subId: c.activeSubId ?? c.req.subId, subOffsetMs: c.subOffsetMs };
+  try { await run(req, { subs: c.subs, safer: step, ...(subLang ? { preferLang: subLang } : {}) }, false); }
+  catch (e) {
+    log.warn('the safer stream did not start', { err: errMsg(e) });
+    if (!cur) { refusal = refusedText(c.device.name); publish(); }   // it ended (keepOrEnd): say why
+  }
+}
+const refusedText = (tv: string) => `${tv} could not play this file, even converted. Another source usually works.`;
+
 /** End a cast for good: its stream, the media on the TV, the receiver app and the connection. */
 async function teardown(c: Current, haNotify: boolean): Promise<void> {
   if (cur === c) cur = null;
@@ -462,7 +504,7 @@ export async function setVolume(v: { level?: number; muted?: boolean }): Promise
 function restartBase(c: Current): { req: CastPlayRequest; opts: CastOpts; at: number } {
   const p = restartOf(c);
   if (p) return { req: p, opts: pending?.opts || {}, at: p.startTime || 0 };
-  return { req: { ...c.req, subId: c.activeSubId ?? null, subOffsetMs: c.subOffsetMs }, opts: c.subs ? { subs: c.subs } : {}, at: (c.raw?.currentTime || 0) + c.startOffset };
+  return { req: { ...c.req, subId: c.activeSubId ?? null, subOffsetMs: c.subOffsetMs }, opts: { ...(c.subs ? { subs: c.subs } : {}), ...(c.safer ? { safer: c.safer } : {}) }, at: (c.raw?.currentTime || 0) + c.startOffset };
 }
 
 export async function seek(time: number): Promise<void> {
@@ -515,7 +557,7 @@ async function discard(session: CastSession): Promise<void> {
 }
 
 export async function stop(haNotify = true): Promise<void> {
-  nextGen(); target = null; pending = null;   // a start still working gives up at its next step
+  nextGen(); target = null; pending = null; refusal = undefined;   // a start still working gives up at its next step
   const c = cur;
   if (dlna.active()) await dlna.stop(haNotify);
   if (c && cur === c) await teardown(c, haNotify); else publish();

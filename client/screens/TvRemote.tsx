@@ -264,6 +264,7 @@ export function TvRemote({ p }: { p: PlayParams }) {
             </>
           ) : (
             <div className="tvr-ended">
+              {cast.error ? <p className="tvr-error">{cast.error}</p> : null}
               <p>{last.current ? `${tvName} stopped${resumeAt ? ` at ${fmtTime(resumeAt)}` : ''}.` : 'Nothing from Kino is on a TV right now.'} Carry on here, or put it back on.</p>
               <div className="tvr-ended-actions">
                 <button className="btn primary big" onClick={playHereFromStop}><IconPlay />{resumeAt ? `Play here from ${fmtTime(resumeAt)}` : 'Play here'}</button>

@@ -39,24 +39,25 @@ class FakeTv extends EventEmitter {
   report(s: Partial<RawStatus>) { this.emit('status', { state: 'PLAYING', currentTime: 0, volume: 1, muted: false, activeTrackIds: [], ...s }); }
 }
 
-interface FakeHls { id: string; infoHash: string; startOffset: number; state: 'starting' | 'ready' | 'ended'; parked: boolean; ready: () => void; fail: (e: Error) => void; done: Promise<void> }
+interface FakeHls { id: string; infoHash: string; startOffset: number; state: 'starting' | 'ready' | 'ended'; parked: boolean; ready: () => void; fail: (e: Error) => void; done: Promise<void>; mode?: string; sw?: boolean }
 let hlsN = 0;
 const hlsMap = new Map<string, FakeHls>();
 const started: FakeHls[] = [];
 const fakeHls = {
   // Like hls.start with an owner: a session of the same file with media (running or finished) is parked, anything else stopped.
-  start(o: { infoHash: string; startOffset: number }) {
+  start(o: { infoHash: string; startOffset: number; decision?: { mode: string }; triedSwEncode?: boolean }) {
     for (const s of [...hlsMap.values()]) { if (s.parked) continue; if (s.infoHash === o.infoHash && s.state !== 'starting') s.parked = true; else fakeHls.stop(s.id); }
     let ready!: () => void; let fail!: (e: Error) => void;
     const done = new Promise<void>((res, rej) => { ready = res; fail = rej; });
     done.catch(() => undefined);
-    const s: FakeHls = { id: `h${++hlsN}`, infoHash: o.infoHash, startOffset: o.startOffset, state: 'starting', parked: false, ready: () => { s.state = 'ready'; ready(); }, fail, done };
+    const s: FakeHls = { id: `h${++hlsN}`, infoHash: o.infoHash, startOffset: o.startOffset, state: 'starting', parked: false, ready: () => { s.state = 'ready'; ready(); }, fail, done, mode: o.decision?.mode, sw: !!o.triedSwEncode };
     hlsMap.set(s.id, s); started.push(s);
     return s;
   },
   waitReady(s: FakeHls) { return s.done; },
   stop(id: string) { const s = hlsMap.get(id); if (!s) return; hlsMap.delete(id); s.fail(new Error('Stream session was replaced')); },
   revive(id: string) { const s = hlsMap.get(id); if (s) s.parked = false; return !!s; },
+  hw: () => true,
 };
 
 const MKV: ProbeInfo = { container: 'mkv', duration: 3600, video: { codec: 'hevc', height: 1080 }, audio: [{ index: 1, codec: 'aac' }], subs: [] };
@@ -194,6 +195,69 @@ test('the TV going idle on the old media while its replacement starts ends nothi
   tv.loads[0].resolve(); await p;
   assert.equal(cast.status().active, true);
   assert.equal(cast.status().timeOffset, 400);
+});
+
+test('a stream the TV could not play: the same spot again converted, then encoded in software, then the phone is told why', { timeout: 5000 }, async () => {
+  probes.ccc = MP4;
+  const tv = await playing({ infoHash: 'ccc', startTime: 1200 }, 1200);
+  assert.equal(cast.status().mode, 'direct');
+  tv.report({ state: 'IDLE', idleReason: 'ERROR' });          // 5.1 audio, say: the old Chromecast gives up at once
+  await flush();
+  assert.equal(tv.closed, false, 'same connection, no teardown');
+  assert.equal(started.length, 1);
+  assert.equal(started[0].mode, 'hls-transcode', 'everything converted');
+  assert.equal(started[0].sw, false);
+  assert.equal(started[0].startOffset, 1200, 'from where it was asked to start');
+  started[0].ready(); await flush();
+  tv.loads.at(-1)!.resolve(); await flush();
+  assert.equal(cast.status().active, true);
+  assert.equal(cast.status().mode, 'hls-transcode');
+  tv.report({ state: 'IDLE', idleReason: 'ERROR' });          // the hardware encode refused too
+  await flush();
+  assert.equal(started.length, 2);
+  assert.equal(started[1].sw, true, 'software encode next');
+  started[1].ready(); await flush();
+  tv.loads.at(-1)!.resolve(); await flush();
+  tv.report({ state: 'IDLE', idleReason: 'ERROR' });
+  await flush();
+  assert.equal(started.length, 2, 'nothing safer left: no third try');
+  assert.equal(cast.status().active, false);
+  assert.equal(cast.status().error, 'TV living could not play this file, even converted. Another source usually works.');
+  assert.equal(tv.closed, true);
+  // The next command starts clean.
+  probes.ddd = MP4;
+  const p = cast.castTo(req({ infoHash: 'ddd' }));
+  await flush(); tvs.at(-1)!.loads.at(-1)!.resolve(); await p;
+  assert.equal(cast.status().error, undefined);
+});
+
+test('a seek during the safer stream stays safer: never the stream the TV refused', { timeout: 5000 }, async () => {
+  probes.ccc = MP4;
+  const tv = await playing({ infoHash: 'ccc' }, 100);
+  tv.report({ state: 'IDLE', idleReason: 'ERROR' });
+  await flush(); started[0].ready(); await flush();
+  tv.loads.at(-1)!.resolve(); await flush();
+  tv.report({ currentTime: 30 });
+  const p = cast.seek(1500);
+  await flush();
+  assert.equal(started.length, 2, 'a restart, not a seek on the TV');
+  assert.equal(started[1].mode, 'hls-transcode');
+  assert.equal(started[1].startOffset, 1500);
+  started[1].ready(); await flush();
+  tv.loads.at(-1)!.resolve(); await p;
+  assert.equal(cast.status().mode, 'hls-transcode');
+});
+
+test('an error long after the TV took the stream ends the cast as before: no safer try, no refusal', { timeout: 5000 }, async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: 1_000_000 });
+  probes.ccc = MP4;
+  const tv = await playing({ infoHash: 'ccc' }, 3000);
+  t.mock.timers.tick(10 * 60_000);
+  tv.report({ state: 'IDLE', idleReason: 'ERROR' });
+  await flush();
+  assert.equal(started.length, 0);
+  assert.equal(cast.status().active, false);
+  assert.equal(cast.status().error, undefined);
 });
 
 test('another title on the same TV saves where the old one was', { timeout: 5000 }, async () => {

@@ -68,6 +68,19 @@ function directBlocker(p: ProbeInfo, target: Target, a: ProbeInfo['audio'][numbe
   return undefined;
 }
 
+/** Nothing copied: H.264 and stereo AAC made here, in MPEG-TS. What a Chromecast gets once it could not play a stream. */
+export const convertAll = (d: Decision, reason: string): Decision => ({ ...d, mode: 'hls-transcode', reason, videoCopy: false, audioCopy: false, segment: 'mpegts' });
+
+/**
+ * The next try for a Chromecast that could not play a stream (receiver ERROR right after the load): 1 converts everything
+ * (convertAll), 2 also encodes in software, since the TV refused what the Mac's hardware encoder made (HEVC releases,
+ * now and then, every try). 0: nothing safer is left. `sw`: that stream was software encoded; `hw`: the encoder this Mac has.
+ */
+export function saferStep(d: Decision, sw: boolean, hw: boolean): 0 | 1 | 2 {
+  if (d.videoCopy || d.audioCopy) return 1;
+  return hw && !sw ? 2 : 0;
+}
+
 export function decide(p: ProbeInfo, target: Target, opts: DecideOpts = {}): Decision {
   const v = p.video?.codec || 'none';
   const a = p.audio.find((x) => x.index === opts.audioIndex) || p.audio[0];

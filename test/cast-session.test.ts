@@ -189,7 +189,7 @@ test('the status poll asks once at a time, gives up after 8 s and takes back the
   assert.equal(asks.length, 1);
   for (let i = 0; i < 4; i++) await step(2000);   // 10 s: three polls skipped while one waits, then it times out
   assert.equal(asks.length, 1, 'never more than one request waiting');
-  assert.equal(media.listenerCount('message'), 0, 'the unanswered request leaves nothing behind');
+  assert.equal(media.listenerCount('message'), 1, 'the unanswered request leaves nothing behind (the one left logs receiver errors)');
   await step(2000);
   assert.equal(asks.length, 2, 'the next poll asks again');
   asks[1](null, { playerState: 'PLAYING', currentTime: 12, volume: { level: 1, muted: false } });

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decide, pickAudio } from '../server/media/decide.ts';
+import { decide, pickAudio, convertAll, saferStep } from '../server/media/decide.ts';
 import type { ProbeInfo } from '../server/types.ts';
 
 const p = (o: Partial<ProbeInfo>): ProbeInfo => ({ container: 'mkv', duration: 100, video: { codec: 'h264' }, audio: [{ index: 1, codec: 'aac', lang: 'eng' }], subs: [], ...o });
@@ -189,4 +189,24 @@ test('webm: direct where the browser plays WebM but not Matroska, iOS and the Ch
     assert.equal(reason, `webm container not supported on ${tg}`);
     assert.equal(was, `mkv container not supported on ${tg}`);
   }
+});
+
+test('saferStep: a Chromecast that could not play a stream gets everything converted, then a software encode, then nothing', () => {
+  const mp4 = p({ container: 'mp4', video: { codec: 'h264' }, audio: [{ index: 1, codec: 'aac', channels: 2 }] });
+  const direct = decide(mp4, 'chromecast');
+  assert.equal(direct.mode, 'direct');
+  assert.equal(saferStep(direct, false, true), 1);
+  const all = convertAll(direct, 'the TV could not play the first stream');
+  assert.deepEqual({ ...all, reason: undefined }, { ...direct, reason: undefined, mode: 'hls-transcode', videoCopy: false, audioCopy: false, segment: 'mpegts' });
+  assert.equal(all.audioIndex, direct.audioIndex, 'same audio track');
+  assert.equal(saferStep(all, false, true), 2, 'the hardware encode refused: software next');
+  assert.equal(saferStep(all, true, true), 0);
+  assert.equal(saferStep(all, false, false), 0, 'no hardware encoder: it already was software');
+  const copy = decide(p({ container: 'mkv', video: { codec: 'h264' }, audio: [{ index: 1, codec: 'aac', channels: 2 }] }), 'chromecast');
+  assert.equal(copy.mode, 'hls-copy');
+  assert.equal(saferStep(copy, false, true), 1, 'copied video: convert it');
+  const hevc = decide(p({ container: 'mkv', video: { codec: 'hevc' }, audio: [{ index: 1, codec: 'aac', channels: 2 }] }), 'chromecast');
+  assert.equal(hevc.audioCopy, true);
+  assert.equal(saferStep(hevc, false, true), 1, 'copied audio: convert it too');
+  assert.equal(saferStep(decide(p({ container: 'mkv', video: { codec: 'hevc' }, audio: [{ index: 1, codec: 'eac3' }] }), 'chromecast'), false, true), 2);
 });

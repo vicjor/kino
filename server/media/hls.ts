@@ -320,7 +320,8 @@ export async function waitReady(s: HlsSession, ms: number): Promise<void> {
   if (r !== true) throw r;
 }
 
-export function start(opts: { infoHash: string; fileIdx: number; sourceUrl: string; startOffset: number; decision: Decision; probe: Probed; owner?: string }): HlsSession {
+/** `triedSwEncode`: encode in software from the start (a TV refused what the hardware encoder made). */
+export function start(opts: { infoHash: string; fileIdx: number; sourceUrl: string; startOffset: number; decision: Decision; probe: Probed; owner?: string; triedSwEncode?: boolean }): HlsSession {
   // One running ffmpeg per owner. Earlier sessions of the same file that have media, running or finished,
   // are parked (frozen, segments kept) so a rewind into them is instant; anything else of this owner's goes.
   if (opts.owner) {

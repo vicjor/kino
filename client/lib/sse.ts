@@ -1,4 +1,4 @@
-import { setStore, toast } from './store';
+import { setStore, getStore, toast } from './store';
 import type { Events } from '../../server/types.js';
 
 /** The app's one connection to /api/events. Screens listen on it with onSse, never with an EventSource of their own. */
@@ -46,7 +46,8 @@ function connect(): void {
 export function startSse(): void {
   if (!started) {
     started = true;
-    onSse('cast.status', (cast) => setStore({ cast }));
+    // A cast the TV could not play ends with its reason: said once, wherever the phone is, not only "stopped".
+    onSse('cast.status', (cast) => { if (!cast.active && cast.error && cast.error !== getStore().cast.error) toast(cast.error, 'error'); setStore({ cast }); });
     onSse('cast.receivers', (receivers) => setStore({ receivers }));
     onSse('downloads', (downloads) => setStore({ downloads }));
     onSse('torrent.stats', (stats) => setStore({ stats }));
