@@ -112,6 +112,7 @@ export function Title() {
       return;
     }
     const best = streams?.sources.find((s) => s.id === streams.auto);
+    if (best && streams?.pickKey) void api.logPick(streams.pickKey, best.id, 'auto', videoId);   // the pick log learns what became of Auto's pick
     if (best) play(best); else if (streams?.sources.length) noGoodSource(); else scrollToSources();
   };
   const download = async (s: Source) => {

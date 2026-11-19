@@ -68,13 +68,15 @@ api.get('/streams/:type/:videoId', async (req, res) => {
   // Live seeders, the running time and the kind asked for (a film titled "Open Season 2" is never a season pack), as a TV's auto-next ranks.
   const { ranked, auto } = await rankLive(sources, tg, kind, { runtimeSec, caps, binge: typeof req.query.binge === 'string' ? req.query.binge : undefined });
   const pickKey = ranked.length ? picks.remember({ videoId, type: kind, target: tg, caps, runtimeSec, auto: auto?.id, sources: ranked }) : undefined;
-  res.json({ sources: ranked, auto: auto?.id, addonsQueried: queried, addonsFailed: failed, pickKey });
+  res.json({ sources: ranked, auto: auto?.id, addonsQueried: queried, addonsFailed: failed, pickKey, videoId });
 });
 
-// A release played or cast from a source list: one line in the local pick log (picks.ts), to tune the automatic pick on.
+// A release played or cast from a source list, or Auto's pick taken by the Play button: one line in the local pick log
+// (picks.ts), to tune the automatic pick on. `videoId` finds a newer answer for the title when the key is forgotten.
 api.post('/picks', (req, res) => {
-  const { key, chosen, via } = req.body || {};
+  const { key, chosen, via, videoId } = req.body || {};
   if (typeof key !== 'string' || !/^[0-9a-f]{12}$/.test(key) || typeof chosen !== 'string' || !/^[0-9a-f]{40}:-?\d{1,5}$/.test(chosen)) throw httpError(400, 'Not a pick');
-  picks.record(key, chosen, via === 'cast' ? 'cast' : 'play');
+  const how = via === 'cast' || via === 'auto' ? via : 'play';
+  picks.record(key, chosen, how, undefined, undefined, typeof videoId === 'string' && videoId.length <= 200 ? videoId : undefined);
   res.status(204).end();
 });

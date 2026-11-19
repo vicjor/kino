@@ -13,13 +13,15 @@ const log = logger('picks');
  * against his own choices later (scripts/pick-agreement.ts report --picks). The streams route remembers each answer
  * for a while under a short key. When a release from that list is played or cast, the client posts the key and the
  * release, and one line goes to picks.jsonl: when, the title, the target (and the codecs a browser decodes), Auto's
- * pick, the chosen one and every candidate's features. It stays on this Mac and holds no addon URLs or tokens; link-like
+ * pick, the chosen one and every candidate's features. Kino's own picks (the title's Play button, a TV's auto-next)
+ * write the same line, `via` saying who chose. It stays on this Mac and holds no addon URLs or tokens; link-like
  * text is cut out of release names. The file never grows past MAX_BYTES: the oldest lines go first.
  *
  * Then what happened to it: when the player on this screen runs into trouble with a release picked here (the stall
- * sheet, a switch to another source, a stop for nobody sharing it, a file that ran dry), an outcome line follows, tied
- * to its pick by `pickT` (the pick line's `t`) and `chosen`. Ids and numbers only. One line per kind per pick, and
- * only for a pick logged in the last OUTCOME_HOURS. Pick lines from `v: 2` on can have outcomes; older ones never do.
+ * sheet, a download slower than the video, a switch to another source, a stop for nobody sharing it, a file that ran
+ * dry), an outcome line follows, tied to its pick by `pickT` (the pick line's `t`) and `chosen`. Ids and numbers only.
+ * One line per kind per pick, and only for a pick logged in the last OUTCOME_HOURS. Pick lines from `v: 2` on can have
+ * outcomes; older ones never do. Which picks are that recent is read back from the log itself, so a restart keeps it.
  */
 export const PICKS_FILE = path.join(DATA_DIR, 'picks.jsonl');
 export const MAX_BYTES = 4 * 1024 ** 2;
@@ -33,6 +35,14 @@ export const OUTCOME_HOURS = 12;
 
 export interface Offer { videoId: string; type: MediaType; target: Target; caps?: DecodeCaps; runtimeSec?: number; auto?: string; sources: Source[] }
 const offers = new Map<string, Offer>();
+
+/**
+ * The newest remembered answer for a video that lists the release: a page showing an older answer for it (from the
+ * client's cache, or from before a restart) still logs its pick against the ranking the server made since.
+ */
+function latestFor(videoId: string, chosen: string): Offer | undefined {
+  return [...offers.values()].reverse().find((o) => o.videoId === videoId && o.sources.some((s) => s.id === chosen));
+}
 
 /** Remember a ranked streams answer; the key goes to the client with it. */
 export function remember(o: Offer): string {
@@ -56,10 +66,11 @@ export function features(s: Source): Partial<Source> {
 }
 
 /**
- * Who picked and how: `play` and `cast` from a source list (the owner's choice), `auto-next` a TV's own pick of the
- * next episode (cast/manager.ts). Only the owner's choices measure the automatic pick; the rest learn outcomes.
+ * Who picked and how: `play` and `cast` from a source list (the owner's choice), `auto` the title's Play button taking
+ * Auto's pick, `auto-next` a TV's own pick of the next episode (cast/manager.ts). Only the owner's choices measure the
+ * automatic pick; the rest learn outcomes.
  */
-export type Via = 'play' | 'cast' | 'auto-next';
+export type Via = 'play' | 'cast' | 'auto' | 'auto-next';
 /** The line for a pick from a remembered answer, or undefined when the key or the release is unknown. */
 export function pickLine(o: Offer, chosen: string, via: Via, now = Date.now()): string | undefined {
   const pick = o.sources.find((s) => s.id === chosen);
@@ -69,7 +80,7 @@ export function pickLine(o: Offer, chosen: string, via: Via, now = Date.now()): 
   return JSON.stringify({ t: now, v: VERSION, videoId: o.videoId, type: o.type, target: o.target, caps: o.caps, via, runtimeSec: o.runtimeSec, auto: o.auto, chosen, sources: list.map(features) });
 }
 
-const OUTCOMES: Record<PickOutcome, true> = { stall: true, switch: true, 'no-peers': true, unreadable: true, 'ended-early': true };
+const OUTCOMES: Record<PickOutcome, true> = { stall: true, slow: true, switch: true, 'no-peers': true, unreadable: true, 'ended-early': true };
 export const isOutcome = (v: unknown): v is PickOutcome => typeof v === 'string' && Object.hasOwn(OUTCOMES, v);
 
 /** What the player says happened: where in the video (`pos`) and after how many seconds of watching, both in seconds. */
@@ -101,31 +112,62 @@ function append(line: string, file: string): boolean {
   } catch (e) { log.warn('could not log pick', { err: errMsg(e) }); return false; }
 }
 
-/** Picks logged lately, by video and release: when, and the outcomes already logged for it. */
+/** Picks logged lately, by video and release: when, and the outcomes already logged for it. KEEP at most. */
 const logged = new Map<string, { t: number; seen: Set<PickOutcome> }>();
 const pickId = (videoId: string, chosen: string) => `${videoId}|${chosen}`;
+function link(videoId: string, chosen: string, t: number): void {
+  const id = pickId(videoId, chosen);
+  logged.delete(id); logged.set(id, { t, seen: new Set() });
+  while (logged.size > KEEP) logged.delete(logged.keys().next().value!);
+}
 
-/** Log one pick from the source list. False when Kino no longer remembers that list or the release is not on it. */
-export function record(key: string, chosen: string, via: Via, file = PICKS_FILE, now = Date.now()): boolean {
-  const o = offers.get(key);
+/**
+ * The links between picks and outcomes, read back from the log the first time it is used (after a restart): every
+ * pick of the last OUTCOME_HOURS and the outcomes already logged for it. The log is the store, so nothing else is kept.
+ */
+let linkedFile: string | undefined;
+function linkFrom(file: string, now: number): void {
+  if (linkedFile === file) return;
+  linkedFile = file; logged.clear();
+  let text: string;
+  try { text = fs.readFileSync(file, 'utf8'); } catch { return; }   // no log yet
+  for (const l of text.split('\n')) {
+    if (!l) continue;
+    let o: Record<string, unknown>;
+    try { o = JSON.parse(l) as Record<string, unknown>; } catch { continue; }
+    if (typeof o.videoId !== 'string' || typeof o.chosen !== 'string') continue;
+    if (Array.isArray(o.sources) && typeof o.t === 'number' && now - o.t <= OUTCOME_HOURS * 3600_000) link(o.videoId, o.chosen, o.t);
+    else if (isOutcome(o.outcome)) { const p = logged.get(pickId(o.videoId, o.chosen)); if (p && p.t === o.pickT) p.seen.add(o.outcome); }
+  }
+}
+/** Tests only: forget the links, as a restart does. */
+export function forgetLinksForTests(): void { linkedFile = undefined; logged.clear(); }
+
+/**
+ * Log one pick from the source list. When Kino no longer remembers that list (`key`), the newest answer for `videoId`
+ * that lists the release stands in. False when neither is known or the release is not on it.
+ */
+export function record(key: string, chosen: string, via: Via, file = PICKS_FILE, now = Date.now(), videoId?: string): boolean {
+  const o = offers.get(key) ?? (videoId ? latestFor(videoId, chosen) : undefined);
   return !!o && logPick(o, chosen, via, file, now);
 }
 
 /** Log a pick Kino made from a ranking it holds (auto-next): the same line a list pick writes. */
 export function logPick(o: Offer, chosen: string, via: Via, file = PICKS_FILE, now = Date.now()): boolean {
   const line = pickLine(o, chosen, via, now);
-  if (!line || !append(line, file)) return false;
-  const id = pickId(o.videoId, chosen);
-  logged.delete(id); logged.set(id, { t: now, seen: new Set() });
-  while (logged.size > KEEP) logged.delete(logged.keys().next().value!);
+  if (!line) return false;
+  linkFrom(file, now);
+  if (!append(line, file)) return false;
+  link(o.videoId, chosen, now);
   return true;
 }
 
 /**
- * Log what happened to a release picked lately. False when no pick of it from a list was logged in the last
- * OUTCOME_HOURS (it came from an auto-next or the Play button, or Kino restarted since), or this outcome is in already.
+ * Log what happened to a release picked lately. False when no pick of it was logged in the last OUTCOME_HOURS (it was
+ * played from a link or Continue watching), or this outcome is in already.
  */
 export function recordOutcome(r: OutcomeReport, file = PICKS_FILE, now = Date.now()): boolean {
+  linkFrom(file, now);
   const pick = logged.get(pickId(r.videoId, r.chosen));
   if (!pick || now - pick.t > OUTCOME_HOURS * 3600_000 || pick.seen.has(r.outcome)) return false;
   pick.seen.add(r.outcome);

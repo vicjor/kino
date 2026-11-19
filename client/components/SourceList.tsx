@@ -67,7 +67,7 @@ export function SourceList({ data, onPlay, onCast, onDownload, busyId }: { data:
   }
   const tags = sourceTags(data);
   // Every pick from a list goes to the local pick log (server/picks.ts), so the automatic pick can learn from it.
-  const logPick = (s: Source, via: 'play' | 'cast') => { if (data.pickKey) void api.logPick(data.pickKey, s.id, via); };
+  const logPick = (s: Source, via: 'play' | 'cast') => { if (data.pickKey) void api.logPick(data.pickKey, s.id, via, data.videoId); };
   const shown = showAll ? data.sources : data.sources.slice(0, INITIAL);
   const hidden = data.sources.length - shown.length;
   return (

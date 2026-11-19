@@ -704,6 +704,7 @@ function LocalPlayer() {
       if (Date.now() - weakNudged.current < 180_000 || stall || srcOpen) return;
       weakNudged.current = Date.now();
       const w = slowWords(stats.numPeers, stats.downloadSpeed, need);
+      outcomeRef.current('slow');
       showNotice({ text: w.text, action: { label: 'Switch source', run: () => { setNotice(null); setSrcOpen({ reason: w.reason }); } } }, 15000);
     }, 25_000);
     return () => window.clearTimeout(t);

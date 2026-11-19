@@ -111,7 +111,7 @@ export const api = {
   ratings: (type: string, id: string) => get<Ratings>(`/api/ratings/${type}/${enc(id)}`),
   streams: (type: string, videoId: string, target: Target) => get<StreamsResponse>(urls.streams(type, videoId, target)),
   /** A release played or cast from a source list, for the local pick log. Fire and forget. */
-  logPick: (key: string, chosen: string, via: 'play' | 'cast') => post<unknown>('/api/picks', { key, chosen, via }).catch(() => undefined),
+  logPick: (key: string, chosen: string, via: 'play' | 'cast' | 'auto', videoId?: string) => post<unknown>('/api/picks', { key, chosen, via, videoId }).catch(() => undefined),
   /** What happened to that release in the player (seconds), for the same log. Fire and forget. */
   logOutcome: (o: PickOutcomeReport) => post<unknown>('/api/picks/outcome', o).catch(() => undefined),
   play: (r: PlayRequest) => post<PlayResponse>('/api/play', r),

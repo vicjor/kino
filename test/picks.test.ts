@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { remember, record, recordOutcome, outcomeLine, isOutcome, scrub, features, pickLine, trimLines, MAX_BYTES, OUTCOME_HOURS } from '../server/picks.ts';
+import { remember, record, recordOutcome, outcomeLine, isOutcome, scrub, features, pickLine, trimLines, forgetLinksForTests, MAX_BYTES, OUTCOME_HOURS } from '../server/picks.ts';
 import type { Source } from '../server/types.ts';
 
 const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'kino-picks-'));
@@ -81,7 +81,7 @@ test('outcomeLine: ids and whole seconds, tied to its pick by pickT, nothing els
 });
 
 test('isOutcome: the kinds the player reports, nothing else', () => {
-  for (const k of ['stall', 'switch', 'no-peers', 'unreadable', 'ended-early']) assert.equal(isOutcome(k), true, k);
+  for (const k of ['stall', 'slow', 'switch', 'no-peers', 'unreadable', 'ended-early']) assert.equal(isOutcome(k), true, k);
   for (const k of ['', 'toString', 'disk-full', 1, null, undefined]) assert.equal(isOutcome(k), false, String(k));
 });
 
@@ -107,4 +107,33 @@ test('recordOutcome: one line per kind for a release picked lately, tied to its 
   assert.equal(record(key, mk(2).id, 'play', file, late), true);
   assert.equal(recordOutcome(r, file, late + 1), true);
   assert.equal(JSON.parse(fs.readFileSync(file, 'utf8').trim().split('\n').at(-1)!).pickT, late);
+});
+
+test('record: a forgotten key logs against the newest answer for the video that lists the release', () => {
+  const file = path.join(DIR, 'fallback.jsonl');
+  remember({ ...offer([mk(1), mk(2)]), videoId: 'tt7:1:1' });
+  remember({ ...offer([mk(2), mk(3)]), videoId: 'tt7:1:1', auto: mk(2).id });
+  remember({ ...offer([mk(3)]), videoId: 'tt8' });
+  assert.equal(record('000000000000', mk(3).id, 'auto', file, 1000, 'tt7:1:1'), true);
+  assert.equal(record('000000000000', mk(1).id, 'play', file, 1000, 'tt7:1:1'), true, 'an older answer lists it');
+  assert.equal(record('000000000000', mk(4).id, 'play', file, 1000, 'tt7:1:1'), false, 'no answer lists it');
+  assert.equal(record('000000000000', mk(3).id, 'play', file, 1000), false, 'no video to look for');
+  const [line] = fs.readFileSync(file, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.deepEqual([line.via, line.videoId, line.auto, line.sources.length], ['auto', 'tt7:1:1', mk(2).id, 2]);
+});
+
+test('recordOutcome: after a restart the log itself still ties trouble to its pick, once per kind', () => {
+  const file = path.join(DIR, 'restart.jsonl');
+  const key = remember({ ...offer([mk(1), mk(2)]), videoId: 'tt6:1:1' });
+  assert.equal(record(key, mk(1).id, 'play', file, 1000), true);
+  const r = { videoId: 'tt6:1:1', chosen: mk(1).id, outcome: 'slow' as const, pos: 60, watchedSec: 60 };
+  assert.equal(recordOutcome(r, file, 2000), true);
+  forgetLinksForTests();
+  assert.equal(recordOutcome(r, file, 3000), false, 'that kind is in already, the log says so');
+  assert.equal(recordOutcome({ ...r, outcome: 'stall' }, file, 4000), true);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8').trim().split('\n').at(-1)!).pickT, 1000);
+  forgetLinksForTests();
+  assert.equal(recordOutcome({ ...r, outcome: 'switch' }, file, 1000 + OUTCOME_HOURS * 3600_000 + 1), false, 'too old to tie');
+  forgetLinksForTests();
+  assert.equal(recordOutcome({ ...r, outcome: 'switch' }, path.join(DIR, 'none.jsonl'), 5000), false, 'no log yet');
 });

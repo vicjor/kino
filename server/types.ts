@@ -98,6 +98,8 @@ export interface StreamsResponse {
   addonsFailed: string[];
   /** Names this answer in the local pick log: POST /api/picks with it when a release from the list is played. */
   pickKey?: string;
+  /** The video asked for: sent along with a pick, so an answer the server forgot still logs (server/picks.ts). */
+  videoId?: string;
 }
 
 export interface PlayRequest {
@@ -347,11 +349,12 @@ export type ErrorCode = 'no-peers' | 'unreadable' | 'disk-full' | 'tool-broken' 
 /**
  * What happened to a release picked from a source list, as the player saw it (POST /api/picks/outcome, server/picks.ts):
  *   stall        the stall sheet came up
+ *   slow         the player said the download is slower than the video
  *   switch       the viewer switched to another source
  *   no-peers     playback stopped on that server code (ErrorCode), unreadable likewise
  *   ended-early  the file played straight through ran dry well before its end
  */
-export type PickOutcome = 'stall' | 'switch' | 'no-peers' | 'unreadable' | 'ended-early';
+export type PickOutcome = 'stall' | 'slow' | 'switch' | 'no-peers' | 'unreadable' | 'ended-early';
 
 /** GET /api/meta/:type/:id: the title, progress per video id, and whether it is saved or followed. */
 export interface MetaResponse { meta: Meta; progress: Record<string, Progress>; inWatchlist: boolean; following: boolean }

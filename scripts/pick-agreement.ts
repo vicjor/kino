@@ -119,8 +119,9 @@ interface OutcomeRow { outcome: string; chosen: string; pickT: number; watchedSe
 
 /**
  * What became of the picks played here, per who chose (server/picks.ts outcome lines, tied to a pick by pickT and
- * chosen). Counts the picks played in the browser from the log format that learns outcomes (v 2), and any pick an
- * outcome names. An outcome whose pick was trimmed away is left out. Undefined when the log has no outcome line at all.
+ * chosen). Counts the picks played in the browser (from a list or the Play button) from the log format that learns
+ * outcomes (v 2), and any pick an outcome names. An outcome whose pick was trimmed away is left out. Undefined when
+ * the log has no outcome line at all.
  */
 export function tallyOutcomes(text: string): Record<Chooser, OutcomeTally> | undefined {
   const picks = new Map<string, PickRow>(); const outs: OutcomeRow[] = [];
@@ -138,7 +139,7 @@ export function tallyOutcomes(text: string): Record<Chooser, OutcomeTally> | und
   const out: Record<Chooser, OutcomeTally> = { Auto: empty(), owner: empty() };
   for (const p of picks.values()) {
     const got = per.get(p);
-    if (!got && !((p.v ?? 1) >= 2 && p.via === 'play')) continue;
+    if (!got && !((p.v ?? 1) >= 2 && (p.via === 'play' || p.via === 'auto'))) continue;
     const t = out[p.auto && p.chosen === p.auto ? 'Auto' : 'owner'];
     t.picks++;
     if (!got) continue;
