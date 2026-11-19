@@ -7,7 +7,7 @@ import type { HlsSession } from '../server/media/hls.ts';
 const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'kino-test-'));
 process.env.KINO_DATA = DIR;
 const hls = await import('../server/media/hls.ts');
-const { ffmpegArgs, parseKeyframeRead, seekTarget, seeksEarly, covers, producedSeconds, playlistName } = hls;
+const { ffmpegArgs, parseKeyframeRead, seekTarget, seeksEarly, covers, producedSeconds, playlistName, sameOutput } = hls;
 after(() => fs.rmSync(DIR, { recursive: true, force: true }));
 
 type Video = { codec: string; width?: number; height?: number };
@@ -249,4 +249,16 @@ test('a finished session is parked like a running one, and a seek back into it r
   assert.equal(hls.get(a.id), undefined, 'another file: the finished ones go');
   assert.equal(hls.get(b.id), undefined);
   hls.stop(other.id);
+});
+
+test('sameOutput: a seek may switch only to a session of the same file with the same audio track and output', () => {
+  const a = session({ copy: true, audioIndex: 1 });
+  assert.ok(sameOutput(a, session({ copy: true, audioIndex: 1 })));
+  assert.ok(!sameOutput(a, session({ copy: true, audioIndex: 2 })), 'another audio language');
+  assert.ok(!sameOutput(a, session({ copy: false, audioIndex: 1 })), 'transcode fallback');
+  assert.ok(!sameOutput(a, session({ copy: true, audioCopy: true, audioIndex: 1 })), 'audio copied, not encoded');
+  assert.ok(!sameOutput(a, session({ copy: true, audioIndex: 1, segment: 'mpegts' })), 'segment format');
+  assert.ok(!sameOutput(a, session({ copy: true, audioIndex: 1, triedSwEncode: true })), 'software encoder');
+  assert.ok(!sameOutput(a, { ...session({ copy: true, audioIndex: 1 }), fileIdx: 1 }), 'another file');
+  assert.ok(!sameOutput(a, { ...session({ copy: true, audioIndex: 1 }), infoHash: 'other' }), 'another torrent');
 });

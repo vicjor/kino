@@ -399,13 +399,23 @@ function prunePinned(owner: string): void {
 }
 
 /**
+ * Same file and same stream out: audio track, mode, copy or encode per stream, segment format, software encoder.
+ * Only such a session may stand in for another on a seek, or switching the audio track would wake the old one.
+ */
+export function sameOutput(a: Pick<HlsSession, 'infoHash' | 'fileIdx' | 'decision' | 'triedSwEncode'>, b: Pick<HlsSession, 'infoHash' | 'fileIdx' | 'decision' | 'triedSwEncode'>): boolean {
+  const x = a.decision, y = b.decision;
+  return a.infoHash === b.infoHash && a.fileIdx === b.fileIdx && x.audioIndex === y.audioIndex && x.mode === y.mode
+    && x.videoCopy === y.videoCopy && x.audioCopy === y.audioCopy && x.segment === y.segment && !!a.triedSwEncode === !!b.triedSwEncode;
+}
+
+/**
  * Seek outside the current session's produced range. Rewinding into something already transcoded
  * (this session, or a parked one of the same file) is a switch, not a new ffmpeg.
  */
 export function seek(s: HlsSession, time: number): HlsSession {
   const t = Math.max(0, Math.floor(time));
   if (covers(s, t)) { s.lastAccess = Date.now(); return s; }
-  const twin = [...sessions.values()].find((x) => x !== s && x.owner === s.owner && x.infoHash === s.infoHash && x.fileIdx === s.fileIdx && covers(x, t));
+  const twin = [...sessions.values()].find((x) => x !== s && x.owner === s.owner && sameOutput(x, s) && covers(x, t));
   if (twin) { park(s); wake(twin); if (s.owner) prunePinned(s.owner); return twin; }
   return start({ infoHash: s.infoHash, fileIdx: s.fileIdx, sourceUrl: s.sourceUrl, startOffset: t, decision: s.decision, probe: s.probe, owner: s.owner });
 }
