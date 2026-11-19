@@ -22,6 +22,10 @@ const log = logger('picks');
  * dry), an outcome line follows, tied to its pick by `pickT` (the pick line's `t`) and `chosen`. Ids and numbers only.
  * One line per kind per pick, and only for a pick logged in the last OUTCOME_HOURS. Pick lines from `v: 2` on can have
  * outcomes; older ones never do. Which picks are that recent is read back from the log itself, so a restart keeps it.
+ *
+ * And how fast it came: a rate line (pick-rate.ts) with the bytes of the file the swarm delivered over the first minute
+ * of its download, tied to its pick the same way, once per pick. With the pick line's seeders it is what PICK.maxRate
+ * and PICK.halfSeeds (score.ts) can be fitted on.
  */
 export const PICKS_FILE = path.join(DATA_DIR, 'picks.jsonl');
 export const MAX_BYTES = 4 * 1024 ** 2;
@@ -112,8 +116,8 @@ function append(line: string, file: string): boolean {
   } catch (e) { log.warn('could not log pick', { err: errMsg(e) }); return false; }
 }
 
-/** Picks logged lately, by video and release: when, and the outcomes already logged for it. KEEP at most. */
-const logged = new Map<string, { t: number; seen: Set<PickOutcome> }>();
+/** Picks logged lately, by video and release: when, the outcomes already logged for it, and whether its rate is in. KEEP at most. */
+const logged = new Map<string, { t: number; seen: Set<PickOutcome>; rated?: boolean }>();
 const pickId = (videoId: string, chosen: string) => `${videoId}|${chosen}`;
 function link(videoId: string, chosen: string, t: number): void {
   const id = pickId(videoId, chosen);
@@ -137,7 +141,10 @@ function linkFrom(file: string, now: number): void {
     try { o = JSON.parse(l) as Record<string, unknown>; } catch { continue; }
     if (typeof o.videoId !== 'string' || typeof o.chosen !== 'string') continue;
     if (Array.isArray(o.sources) && typeof o.t === 'number' && now - o.t <= OUTCOME_HOURS * 3600_000) link(o.videoId, o.chosen, o.t);
-    else if (isOutcome(o.outcome)) { const p = logged.get(pickId(o.videoId, o.chosen)); if (p && p.t === o.pickT) p.seen.add(o.outcome); }
+    else if (isOutcome(o.outcome) || typeof o.rate === 'number') {
+      const p = logged.get(pickId(o.videoId, o.chosen));
+      if (p && p.t === o.pickT) { if (isOutcome(o.outcome)) p.seen.add(o.outcome); else p.rated = true; }
+    }
   }
 }
 /** Tests only: forget the links, as a restart does. */
@@ -159,7 +166,32 @@ export function logPick(o: Offer, chosen: string, via: Via, file = PICKS_FILE, n
   linkFrom(file, now);
   if (!append(line, file)) return false;
   link(o.videoId, chosen, now);
+  for (const f of pickedHooks) f(o.videoId, chosen);
   return true;
+}
+
+const pickedHooks: ((videoId: string, chosen: string) => void)[] = [];
+/** Call `f` with every pick logged from now on (pick-rate.ts measures its download). */
+export function onPicked(f: (videoId: string, chosen: string) => void): void { pickedHooks.push(f); }
+
+/**
+ * What a picked release's swarm delivered: `bytes` of the file in `sec` seconds, from `peers` peers at the end, with
+ * `haveAtStart` of `length` bytes already on disk, while `torrents` torrents were loaded (more than one shares the line).
+ */
+export interface RateSample { bytes: number; sec: number; peers: number; haveAtStart: number; length: number; torrents: number }
+const whole = (n: number) => (Number.isFinite(n) && n > 0 ? Math.round(n) : 0);
+/** The line for the download rate of the pick logged at `pickT`, in bytes a second. */
+export function rateLine(pickT: number, videoId: string, chosen: string, s: RateSample, now = Date.now()): string {
+  return JSON.stringify({ t: now, rate: s.sec > 0 ? whole(s.bytes / s.sec) : 0, videoId, chosen, pickT, sec: whole(s.sec), bytes: whole(s.bytes), peers: whole(s.peers), haveAtStart: whole(s.haveAtStart), length: whole(s.length), torrents: whole(s.torrents) });
+}
+
+/** Log how fast a release picked lately downloaded. False when no pick of it is linked, or its rate is in already. */
+export function recordRate(videoId: string, chosen: string, s: RateSample, file = PICKS_FILE, now = Date.now()): boolean {
+  linkFrom(file, now);
+  const pick = logged.get(pickId(videoId, chosen));
+  if (!pick || pick.rated || now - pick.t > OUTCOME_HOURS * 3600_000) return false;
+  pick.rated = true;
+  return append(rateLine(pick.t, videoId, chosen, s, now), file);
 }
 
 /**

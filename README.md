@@ -217,6 +217,7 @@ server/            Express API and everything behind it (TypeScript, ESM)
   rank.ts          the one ranking path (source list and TV auto-next): live seeders, running time, score.ts
   next-source.ts   the next episode's release, browser and TV alike: same pack, same binge group, else the pick
   picks.ts         local log of sources played from a list and what became of them (picks.jsonl), to tune score.ts on
+  pick-rate.ts     each logged pick's download rate over its first minute, into picks.jsonl (for PICK.maxRate)
   scrape.ts        seeders counted on the trackers
   torrent.ts       one webtorrent client, one selected file at a time, LRU cache
   downloads.ts     download for later

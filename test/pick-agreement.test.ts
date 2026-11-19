@@ -45,6 +45,9 @@ test('readPicks: picks.jsonl lines as cases; a broken line is skipped', () => {
   assert.deepEqual(withCaps.caps, { hevc: true });
   assert.equal(readPicks(JSON.stringify({ ...line, via: undefined })).length, 1, 'a line from before `via` was the owner\'s');
   assert.equal(readPicks(JSON.stringify({ ...line, via: 'auto-next' })).length, 0, 'Kino\'s own pick is not a case');
+  const rate = JSON.stringify({ t: 2, rate: 5e5, videoId: 'tt2', chosen: line.chosen, pickT: 1, sec: 60, bytes: 3e7, peers: 9, haveAtStart: 0, length: 1e9, torrents: 1 });
+  assert.equal(readPicks(rate).length, 0, 'a rate line is not a pick');
+  assert.equal(tallyOutcomes(`${JSON.stringify(line)}\n${rate}`), undefined, 'nor an outcome');
 });
 
 test('judge: ranks with the codecs the browser said it decodes', () => {

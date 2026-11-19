@@ -13,6 +13,7 @@ import * as cast from './cast/manager.js';
 import * as monitor from './cast/monitor.js';
 import * as dlna from './cast/dlna.js';
 import * as downloads from './downloads.js';
+import * as pickRate from './pick-rate.js';
 import * as rails from './discover.js';
 import { ensureDatasets, datasetAge } from './ratings.js';
 import { freeBytes } from './disk.js';
@@ -129,6 +130,7 @@ server.once('listening', () => {
   dlna.start();
   monitor.start();
   downloads.start();
+  pickRate.start();   // measures what each logged pick downloads in its first minute (picks.jsonl)
   startPlainRedirect();
   awake.start(() => isBusy(viewersNow()));
   setTimeout(() => void ensureDatasets(), 15_000).unref();   // IMDb dumps ready before anyone opens a title

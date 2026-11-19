@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { remember, record, recordOutcome, outcomeLine, isOutcome, scrub, features, pickLine, trimLines, forgetLinksForTests, MAX_BYTES, OUTCOME_HOURS } from '../server/picks.ts';
+import { remember, record, recordOutcome, outcomeLine, isOutcome, scrub, features, pickLine, trimLines, forgetLinksForTests, onPicked, recordRate, rateLine, MAX_BYTES, OUTCOME_HOURS } from '../server/picks.ts';
 import type { Source } from '../server/types.ts';
 
 const DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'kino-picks-'));
@@ -136,4 +136,21 @@ test('recordOutcome: after a restart the log itself still ties trouble to its pi
   assert.equal(recordOutcome({ ...r, outcome: 'switch' }, file, 1000 + OUTCOME_HOURS * 3600_000 + 1), false, 'too old to tie');
   forgetLinksForTests();
   assert.equal(recordOutcome({ ...r, outcome: 'switch' }, path.join(DIR, 'none.jsonl'), 5000), false, 'no log yet');
+});
+
+test('recordRate: one rate line per pick, tied to it; read back after a restart; nothing for a release no pick names', () => {
+  const file = path.join(DIR, 'rates.jsonl');
+  const key = remember({ ...offer([mk(1), mk(2)]), videoId: 'tt4:1:1' });
+  const seen: string[] = [];
+  onPicked((v, c) => seen.push(`${v}|${c}`));
+  assert.equal(record(key, mk(2).id, 'play', file, 1000), true);
+  assert.deepEqual(seen, [`tt4:1:1|${mk(2).id}`], 'the measuring starts with the pick');
+  const s = { bytes: 120 * 1024 ** 2, sec: 60, peers: 25.4, haveAtStart: 0, length: 2 * 1024 ** 3, torrents: 1 };
+  assert.equal(recordRate('tt4:1:1', mk(1).id, s, file, 2000), false, 'not the release picked');
+  assert.equal(recordRate('tt4:1:1', mk(2).id, s, file, 70_000), true);
+  forgetLinksForTests();
+  assert.equal(recordRate('tt4:1:1', mk(2).id, s, file, 80_000), false, 'its rate is in already, the log says so');
+  const last = JSON.parse(fs.readFileSync(file, 'utf8').trim().split('\n').at(-1)!);
+  assert.deepEqual(last, { t: 70_000, rate: 2 * 1024 ** 2, videoId: 'tt4:1:1', chosen: mk(2).id, pickT: 1000, sec: 60, bytes: 120 * 1024 ** 2, peers: 25, haveAtStart: 0, length: 2 * 1024 ** 3, torrents: 1 });
+  assert.equal(JSON.parse(rateLine(1, 'tt1', mk(1).id, { ...s, sec: 0 }, 2)).rate, 0);
 });
