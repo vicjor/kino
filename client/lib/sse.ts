@@ -32,7 +32,7 @@ function connect(): void {
   if (es) return;
   const src = es = new EventSource('/api/events');
   for (const name of listeners.keys()) bind(src, name);
-  src.addEventListener('server.restart', () => { setStore({ online: false }); toast('Kino is restarting, back in a few seconds'); });
+  src.addEventListener('server.restart' satisfies Name, () => { setStore({ online: false }); toast('Kino is restarting, back in a few seconds'); });
   src.onopen = () => { retry = 1000; setStore({ online: true }); };
   src.onerror = () => {
     setStore({ online: false });

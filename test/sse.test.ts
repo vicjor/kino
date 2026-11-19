@@ -43,11 +43,11 @@ test('the store\'s own events still land in the store', () => {
 
 test('every listener of an event hears it once; one that stops hears nothing more', () => {
   const a: unknown[] = []; const b: unknown[] = [];
-  const stopA = onSse('disk', (d) => a.push(d));
-  onSse('disk', (d) => b.push(d));
-  last().fire('disk', { freeBytes: 1 });
+  const stopA = onSse('cast.receivers', (d) => a.push(d));
+  onSse('cast.receivers', (d) => b.push(d));
+  last().fire('cast.receivers', []);
   stopA();
-  last().fire('disk', { freeBytes: 2 });
+  last().fire('cast.receivers', []);
   assert.equal(a.length, 1);
   assert.equal(b.length, 2);
 });

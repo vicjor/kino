@@ -254,7 +254,7 @@ export interface Settings {
   minFreeBytes: number;
   haWebhookUrl?: string;
   omdbApiKey?: string;       // optional: unlocks Rotten Tomatoes / Metacritic
-  tmdbApiKey?: string;       // optional: trending rows on Home
+  tmdbApiKey?: string;       // optional: trending, recommendations and hidden gems on Home, episode stills
   autoSubs?: boolean;        // pick a subtitle in your language automatically (default on)
   subFontSize: number;       // percent, 100 = default
   autoNext: boolean;
@@ -447,5 +447,5 @@ export interface Events {
   'torrent.stats': TorrentStats;
   'downloads': DownloadInfo[];
   'hls.state': { sessionId: string; state: 'starting' | 'ready' | 'ended' | 'error'; error?: string; code?: ErrorCode };
-  'disk': DiskInfo;
+  'server.restart': Record<string, never>;   // last words before a shutdown (announceShutdown)
 }

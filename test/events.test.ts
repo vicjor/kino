@@ -4,7 +4,7 @@ import { EventEmitter } from 'node:events';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Response } from 'express';
-import { addClient, emit, send, clientCount, MAX_BUFFERED_BYTES } from '../server/events.ts';
+import { addClient, emit, send, clientCount, announceShutdown, MAX_BUFFERED_BYTES } from '../server/events.ts';
 
 /** A stand-in SSE response. `stalled`: the client reads nothing, so every write stays buffered. */
 class FakeRes extends EventEmitter {
@@ -68,4 +68,13 @@ test('over a real socket: a response nobody reads is destroyed and leaves the se
     assert.ok(rounds <= 8, `about 1 MB held, not more (dropped after ${rounds} events of 256 KB)`);
     await closed;   // the server let go of the connection
   } finally { req.destroy(); srv.closeAllConnections(); srv.close(); }
+});
+
+test('announceShutdown tells every client the server restarts, then ends its stream', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const a = new FakeRes(), b = new FakeRes();
+  addClient(a as unknown as Response); addClient(b as unknown as Response);
+  announceShutdown();
+  for (const r of [a, b]) { assert.equal(r.chunks.at(-1), 'event: server.restart\ndata: {}\n\n'); assert.equal(r.writableEnded, true); }
+  assert.equal(clientCount(), 0);
 });

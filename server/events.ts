@@ -30,19 +30,22 @@ export function addClient(res: Response): void {
   res.on('close', () => { clearInterval(ping); clients.delete(res); });
 }
 
+/** One event as written on the stream. */
+const frame = <K extends keyof Events>(name: K, data: Events[K]) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+
 export function emit<K extends keyof Events>(name: K, data: Events[K]): void {
-  const payload = `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+  const payload = frame(name, data);
   for (const c of clients) write(c, payload);
 }
 
 export function clientCount(): number { return clients.size; }
 
 /** Last words before a restart: clients switch to "reconnecting" instead of failing on the first broken request. */
-export function announceShutdown(): void { for (const c of clients) { try { c.write('event: server.restart\ndata: {}\n\n'); c.end(); } catch { /* gone */ } } clients.clear(); }
+export function announceShutdown(): void { for (const c of clients) { try { c.write(frame('server.restart', {})); c.end(); } catch { /* gone */ } } clients.clear(); }
 
 /** Send one event to a single client (initial snapshots on connect). */
 export function send<K extends keyof Events>(res: Response, name: K, data: Events[K]): void {
-  write(res, `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`);
+  write(res, frame(name, data));
 }
 const onConnect: ((res: Response) => void)[] = [];
 export function onClientConnect(fn: (res: Response) => void): void { onConnect.push(fn); }
