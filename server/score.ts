@@ -154,9 +154,13 @@ export function rankSources(sources: Source[], target: Target, kind?: MediaType,
   return [...sources].sort((a, b) => b.score - a.score || (b.seeders || 0) - (a.seeders || 0));
 }
 
+/**
+ * The automatic pick: the best ranked source worth playing (score above 0), or the binge group asked for when it scores
+ * close to the top. Undefined when none is worth playing: then nothing is picked for the viewer, who sees the list.
+ */
 export function pickAuto(ranked: Source[], preferBinge?: string): Source | undefined {
   const ok = ranked.filter((s) => s.score > 0);
-  if (!ok.length) return ranked[0];
+  if (!ok.length) return undefined;
   if (preferBinge) {
     const same = ok.find((s) => s.bingeGroup === preferBinge);
     if (same && same.score >= ok[0].score - 25) return same;

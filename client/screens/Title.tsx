@@ -98,6 +98,8 @@ export function Title() {
   };
   const scrollToSources = () => document.getElementById('sources')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
   const scrollToEpisodes = () => document.getElementById('episodes')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+  /** No source scores well enough to pick one for you (server/score.ts pickAuto): say so, and show the list. */
+  const noGoodSource = () => { toast('No good source found. Pick one from the list.'); scrollToSources(); };
   /**
    * The one button you should not have to hunt for. Resumes with the remembered source, otherwise plays the
    * best pick, otherwise takes you to the source list.
@@ -108,8 +110,8 @@ export function Title() {
       navigate(playUrl({ type, videoId, metaId: id, infoHash: cur.infoHash, fileIdx: cur.fileIdx, name: displayName, poster: meta.poster, background: episode?.thumbnail || meta.background, season: episode?.season, episode: episode?.episode }));
       return;
     }
-    const best = streams?.sources.find((s) => s.id === streams.auto) || streams?.sources[0];
-    if (best) play(best); else scrollToSources();
+    const best = streams?.sources.find((s) => s.id === streams.auto);
+    if (best) play(best); else if (streams?.sources.length) noGoodSource(); else scrollToSources();
   };
   const download = async (s: Source) => {
     if (!meta || !videoId) return;
@@ -137,8 +139,8 @@ export function Title() {
   const onlyTv = useSingleTv();
   const castNow = () => {
     const remembered = cur?.infoHash != null ? streams?.sources.find((s) => s.infoHash === cur.infoHash && (s.fileIdx ?? 0) === (cur.fileIdx ?? 0)) : undefined;
-    const s = remembered || streams?.sources.find((x) => x.id === streams.auto) || streams?.sources[0];
-    if (!s) { scrollToSources(); return; }
+    const s = remembered || streams?.sources.find((x) => x.id === streams.auto);
+    if (!s) { if (streams?.sources.length) noGoodSource(); else scrollToSources(); return; }
     if (onlyTv) void castTo(onlyTv, s); else setCastSrc(s);
   };
   // The TV button on an episode card: its remembered source, else the one this binge used, else the best pick.
@@ -197,7 +199,7 @@ export function Title() {
   const caught = type === 'series' && !preselect && !resumable && meta.videos?.length ? caughtUp(meta.videos, progress) : null;
   const caughtWhen = caught?.upcoming ? airLabel(caught.upcoming.released) : '';
   // Weak: nothing scores positive with a handful of seeders. Streaming will stutter, so offer a download instead.
-  const best = streams ? streams.sources.find((s) => s.id === streams.auto) || streams.sources[0] : undefined;
+  const best = streams ? streams.sources.find((s) => s.id === streams.auto) || streams.sources[0] : undefined;   // the one to download
   const weak = !!(streams && best && !streams.sources.some((s) => s.score > 0 && (s.seeders ?? 0) >= 5));
   const playLabel = caught ? 'Caught up' : resumable ? `Continue${epLabel ? ` ${epLabel}` : ''}` : type === 'series' && episode ? `Play ${epLabel}` : 'Play';
   const playSub = caught ? (caughtWhen ? nextEpisodeLabel(caughtWhen) : 'Pick an episode to watch again')

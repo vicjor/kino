@@ -31,6 +31,16 @@ test('4k hevc on chromecast strongly penalised', () => {
   assert.ok(s.score < 0, `score ${s.score}`);
 });
 
+test('pickAuto: nothing scores above 0, nothing is picked', () => {
+  const cam = mk({ id: 'cam', sourceTag: 'CAM', seeders: 9999 });
+  const dead = mk({ id: 'dead', seeders: 0, sizeBytes: 20 * GB });
+  const r = rankSources([cam, dead], 'browser');
+  assert.ok(r.every((s) => s.score <= 0), r.map((s) => s.score).join());
+  assert.equal(pickAuto(r), undefined);
+  assert.equal(pickAuto(r, 'g1'), undefined, 'a binge group does not bring one back');
+  assert.equal(pickAuto([]), undefined);
+});
+
 test('binge group preference within tolerance', () => {
   const a = mk({ id: 'a', seeders: 800, bingeGroup: 'g1' });
   const b = mk({ id: 'b', seeders: 400, bingeGroup: 'g2' });
@@ -339,10 +349,10 @@ test('equal scores fall back to the larger seeder count', () => {
   assert.deepEqual(rankSources([zero, none], 'browser').map((s) => s.id), ['zero', 'none']);
 });
 
-test('pickAuto: nothing playable falls back to the top row, binge group only within 25 points', () => {
+test('pickAuto: nothing playable, no pick; binge group only within 25 points', () => {
   assert.equal(pickAuto([]), undefined);
   const cams = rankSources([mk({ id: 'c1', sourceTag: 'CAM' }), mk({ id: 'c2', sourceTag: 'TS', seeders: 0 })], 'browser');
-  assert.equal(pickAuto(cams)!.id, 'c1');
+  assert.equal(pickAuto(cams), undefined);
   const best = mk({ id: 'best', seeders: 800 });
   const far = mk({ id: 'far', seeders: 5, sizeBytes: 12 * GB, bingeGroup: 'g' });
   const r = rankSources([best, far], 'browser');

@@ -202,8 +202,11 @@ async function onFinished(c: Current): Promise<void> {
   if (c.req.videoId) persist(c, c.duration || c.raw?.currentTime || 0);
   haEvent('stop', { title: c.req.title, target: c.device.name, reason: 'finished' });
   // A start for another TV is on its way (one waking takes up to 90 s): it takes over, so no next episode here.
-  const ok = !pending && await autoNext(c.req.videoId, c.device.id, c.activeSubId ? c.tracks.find((t) => t.sub.id === c.activeSubId)?.sub.lang : undefined, c.subOffsetMs);
-  if (!ok && cur === c && !replacing(c)) await teardown(c, false);
+  const next = pending ? 'none' : await autoNext(c.req.videoId, c.device.id, c.activeSubId ? c.tracks.find((t) => t.sub.id === c.activeSubId)?.sub.lang : undefined, c.subOffsetMs);
+  if (next !== 'done' && cur === c && !replacing(c)) {
+    if (next === 'no-source') refusal = NO_GOOD_SOURCE;   // the phone says why the next episode did not follow
+    await teardown(c, false);
+  }
 }
 
 /**
@@ -225,34 +228,40 @@ export function markWatched(videoId: string): void {
   saveProgress(p.dur > 0 ? { ...p, pos: p.dur } : { ...p, pos: 1, dur: 1 });
 }
 
+const NO_GOOD_SOURCE = 'No good source found for the next episode.';
 /**
- * Queue the next episode on the same device. Shared by Chromecast and DLNA sessions. True once handled,
- * also when another command (a stop, a seek, the other of two Next presses) came first and won. False when
- * there is nothing to play; a failure is logged and false too, unless `force` (Next) wants it thrown.
+ * What auto-next did: `done` once handled, also when another command (a stop, a seek, the other of two Next presses)
+ * came first and won; `none` when there is nothing to play, or it failed; `no-source` when the next episode has no
+ * source good enough to pick (score.ts pickAuto).
  */
-async function autoNext(videoId: string | undefined, deviceId: string, subLang: string | undefined, subOffsetMs: number, force = false): Promise<boolean> {
+type NextResult = 'done' | 'none' | 'no-source';
+/**
+ * Queue the next episode on the same device. Shared by Chromecast and DLNA sessions. A failure is logged and `none`,
+ * unless `force` (Next) wants it thrown.
+ */
+async function autoNext(videoId: string | undefined, deviceId: string, subLang: string | undefined, subOffsetMs: number, force = false): Promise<NextResult> {
   const { metaId, season } = parseVideoId(videoId || '');
-  if (!videoId || season == null || (!force && (!getState().settings.autoNext || upnext.stopAfter(videoId)))) return false;
+  if (!videoId || season == null || (!force && (!getState().settings.autoNext || upnext.stopAfter(videoId)))) return 'none';
   const gen = castGen;
   const gone = () => { if (gen === castGen) return false; log.info('auto-next: a newer command won', { after: videoId }); return true; };
   try {
     const m = await io.meta('series', metaId);
-    if (gone()) return true;
+    if (gone()) return 'done';
     const next = nextEpisode(m, videoId);
-    if (!next) return false;
+    if (!next) return 'none';
     const { sources } = await io.streams('series', next.id);
-    if (gone()) return true;
+    if (gone()) return 'done';
     // Ranked as the source list ranks it: live seeders, and the show's running time from the meta just fetched.
     const { target: tg, caps } = rankAs(deviceId);
     const { auto: pick } = await rankLive(sources, tg, 'series', { runtimeSec: runtimeSeconds(m.runtime), caps });
-    if (gone()) return true;
-    if (!pick || pick.score <= 0) return false;
+    if (gone()) return 'done';
+    if (!pick) { log.info('auto-next: no good source', { next: next.id, sources: sources.length }); return sources.length ? 'no-source' : 'none'; }
     log.info('auto-next', { next: next.id, source: pick.releaseName, device: deviceId });
     await castTo({ deviceId, infoHash: pick.infoHash, fileIdx: pick.fileIdx ?? -1, videoId: next.id, title: episodeName(m.name, next.season, next.episode, next.title), poster: m.poster, startTime: 0, subId: undefined, subOffsetMs }, subLang ? { preferLang: subLang } : {});
     // After the switch: ending the old session saved where it was (the credits), and this must win over that.
     markWatched(videoId);
-    return true;
-  } catch (e) { if (force) throw e; log.warn('auto-next failed', { err: errMsg(e) }); return false; }
+    return 'done';
+  } catch (e) { if (force) throw e; log.warn('auto-next failed', { err: errMsg(e) }); return 'none'; }
 }
 
 /**
@@ -269,8 +278,9 @@ export async function castNext(manual = true): Promise<CastStatus> {
   }
   const c = cur;
   const subLang = c?.activeSubId ? c.tracks.find((t) => t.sub.id === c.activeSubId)?.sub.lang : undefined;
-  const ok = await autoNext(s.videoId, s.deviceId, subLang, s.subOffsetMs || 0, true);
-  if (!ok) throw httpError(404, 'No next episode with a playable source');
+  const next = await autoNext(s.videoId, s.deviceId, subLang, s.subOffsetMs || 0, true);
+  if (next === 'no-source') throw httpError(404, NO_GOOD_SOURCE);
+  if (next !== 'done') throw httpError(404, 'No next episode with a playable source');
   return status();
 }
 
@@ -607,7 +617,9 @@ export function init(): void {
   // The DLNA side publishes through here too, so its status carries the same up-next decoration.
   dlna.events.on('status', () => emit('cast.status', status()));
   dlna.setAdoptGuard(() => !cur);
-  dlna.events.on('finished', (i: { videoId?: string; deviceId: string; subLang?: string; subOffsetMs: number }) => { void autoNext(i.videoId, i.deviceId, i.subLang, i.subOffsetMs); });
+  dlna.events.on('finished', (i: { videoId?: string; deviceId: string; subLang?: string; subOffsetMs: number }) => {
+    void autoNext(i.videoId, i.deviceId, i.subLang, i.subOffsetMs).then((r) => { if (r === 'no-source' && !cur && !dlna.active()) { refusal = NO_GOOD_SOURCE; publish(); } });
+  });
   // The reaper spares only the session casting now: one dropped without hls.stop stops after the idle window.
   hls.setCastKeep((s) => !!cur && s.id === cur.hlsId);
   upnext.start({ status, castNext, publish, onShow: () => void showUpNextOnTv(true), onHide: () => void showUpNextOnTv(false) });

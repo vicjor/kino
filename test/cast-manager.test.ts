@@ -399,6 +399,16 @@ test('Next with nothing after this episode: 404 with the plain reason; a Cinemet
   await assert.rejects(cast.castNext(), { message: 'Nothing is casting', status: 409 });
 });
 
+test('Next when no source of the next episode is good enough: says so in plain words, starts nothing', { timeout: 5000 }, async () => {
+  await playing({ videoId: 'tt5:1:1' }, 100);
+  io.meta = async () => show;
+  trackerSeeds.set('dead', 0);
+  io.streams = async () => ({ sources: [{ ...source('dead'), seeders: 0 }], queried: [], failed: [] });
+  await assert.rejects(cast.castNext(), { message: 'No good source found for the next episode.', status: 404 });
+  assert.equal(started.length, 1, 'nothing new started');
+  trackerSeeds.delete('dead');
+});
+
 test('a manual Next that works casts episode 2 on the same TV', { timeout: 5000 }, async () => {
   const tv = await playing({ videoId: 'tt5:1:1' }, 100);
   io.meta = async () => show;
