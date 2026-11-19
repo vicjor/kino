@@ -4,7 +4,7 @@ import { api, errorCode } from '../../lib/api';
 import { toast } from '../../lib/store';
 import { endedEarlyWords, endedEarlyDetail, stallWords, slowWords, stutterWords, toastWords, MEDIA } from '../../lib/play-errors';
 import { fmtTime } from '../../lib/format';
-import { bigJumpBack, clampSeek, inRanges, nextPopupAt, rangePairs, type Mark } from '../../lib/playback';
+import { bigJumpBack, clampSeek, inRanges, nextPopupAt, rangePairs, stallWaitMs, type Mark } from '../../lib/playback';
 import type { PlayParams } from '../../lib/router';
 import type { Fail, MediaRefs } from './useSession';
 import type { Notice, ShowNotice } from './PlayerChrome';
@@ -179,18 +179,21 @@ export function useStallWatch(a: StallArgs) {
   const stallSnooze = useRef(0);
   const rebuffers = useRef<number[]>([]);       // timestamps of stalls while playing
   const weakNudged = useRef(0);
-  const diagnose = useCallback(() => stallWords(play, stats), [stats, play]);
+  // Torrent stats arrive every 2 s; read them through a ref so a stats update never restarts the wait.
+  const diagnose = useRef(() => stallWords(play, stats));
+  diagnose.current = () => stallWords(play, stats);
   useEffect(() => {
-    if (phase !== 'ready' || err || stall || !buffering || Date.now() < stallSnooze.current) return;
+    const wait = stallWaitMs({ ready: phase === 'ready', err: !!err, open: !!stall, buffering, snoozedUntil: stallSnooze.current, now: Date.now(), hasPlay: !!play });
+    if (wait == null) return;
     const t = window.setTimeout(() => {
       const v = videoRef.current;
       if (!v || (play && v.paused && v.currentTime > 0)) return;   // user paused, not a stall
-      setStall(diagnose());
+      setStall(diagnose.current());
       outcomeRef.current('stall');
-    }, play ? 18_000 : 35_000);
+    }, wait);
     return () => window.clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buffering, phase, err, stall, play, diagnose]);
+  }, [buffering, phase, err, stall, play]);
   // Soft nudge well before the stall sheet: three rebuffers in two minutes, or a
   // download that cannot keep up with the file's bitrate while we are playing.
   useEffect(() => {

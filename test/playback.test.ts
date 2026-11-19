@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { PlayResponse, SubtitleTrack } from '../server/types.ts';
-import { switchWords, noEpisodeSourceWords, playHow, speedStep, speedWords, clampSeek, bigJumpBack, withMark, rangePairs, inRanges, nextPopupAt, upNextMode, doubleTapSkip, bestInLang, subToTurnOn } from '../client/lib/playback.ts';
+import { switchWords, noEpisodeSourceWords, playHow, speedStep, speedWords, clampSeek, bigJumpBack, withMark, rangePairs, inRanges, nextPopupAt, upNextMode, doubleTapSkip, bestInLang, subToTurnOn, stallWaitMs } from '../client/lib/playback.ts';
 
 test('switchWords: provider or addon, then the resolution unless it is "other"', () => {
   assert.equal(switchWords({ provider: 'Alpha', addon: 'Addon', resolution: '1080p' }), 'Switching to Alpha 1080p');
@@ -100,4 +100,16 @@ test('subToTurnOn: the track used last, else English, else any available', () =>
   assert.equal(subToTurnOn(ts, track('g', 'ger'))?.id, 'e', 'the last one is not available any more');
   assert.equal(subToTurnOn([track('n', 'nor')], null)?.id, 'n');
   assert.equal(subToTurnOn([], null), undefined);
+});
+
+test('stallWaitMs: 18 s once playing started, 35 s before; none when not buffering, failed, open or snoozed', () => {
+  const base = { ready: true, err: false, open: false, buffering: true, snoozedUntil: 0, now: 1000, hasPlay: true };
+  assert.equal(stallWaitMs(base), 18_000);
+  assert.equal(stallWaitMs({ ...base, hasPlay: false }), 35_000);
+  assert.equal(stallWaitMs({ ...base, ready: false }), null);
+  assert.equal(stallWaitMs({ ...base, err: true }), null);
+  assert.equal(stallWaitMs({ ...base, open: true }), null);
+  assert.equal(stallWaitMs({ ...base, buffering: false }), null);
+  assert.equal(stallWaitMs({ ...base, snoozedUntil: 2000 }), null);
+  assert.equal(stallWaitMs({ ...base, snoozedUntil: 1000 }), 18_000);
 });

@@ -79,3 +79,9 @@ export function bestInLang(tracks: SubtitleTrack[], lang: string): SubtitleTrack
 export function subToTurnOn(tracks: SubtitleTrack[], last: SubtitleTrack | null): SubtitleTrack | undefined {
   return (last && tracks.find((x) => x.id === last.id && x.available)) || tracks.find((x) => x.available && /^en/.test(x.lang || '')) || tracks.find((x) => x.available);
 }
+
+/** How long to wait while buffering before the stall sheet opens, or null when it should not wait at all. */
+export function stallWaitMs(o: { ready: boolean; err: boolean; open: boolean; buffering: boolean; snoozedUntil: number; now: number; hasPlay: boolean }): number | null {
+  if (!o.ready || o.err || o.open || !o.buffering || o.now < o.snoozedUntil) return null;
+  return o.hasPlay ? 18_000 : 35_000;
+}
