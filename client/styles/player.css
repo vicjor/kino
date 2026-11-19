@@ -82,6 +82,16 @@
   .pc-group { gap: 8px; }
 }
 @media (max-width: 380px) { .pc-group .pc-circle { width: 40px; height: 40px; } .controls .pc-pill { width: 38px; height: 38px; } }
+/* Phones: the top bar fits in 360 px. The volume slider goes (hardware buttons set the volume), mute stays as a circle;
+   the left buttons keep their size and a TV name in Play on gives way, so the two groups never overlap. */
+@media (max-width: 719px) and (pointer: coarse) {
+  .pc-vol { padding: 0 4px; }
+  .pc-vol .level { display: none; }
+  .pc-top > .pc-group:first-child { flex: none; }
+  .pc-top > .pc-group:last-child, .pc-top .playon, .pc-top .playon-btn { min-width: 0; }
+  .pc-top .playon { flex: 0 1 auto; }
+  .pc-top .playon-btn { max-width: 100%; }
+}
 
 /* ---- where it plays (PlayOn.tsx) ---- */
 .playon { position: relative; flex: none; }
