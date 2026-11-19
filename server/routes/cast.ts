@@ -85,7 +85,6 @@ api.post('/cast/receivers/:id/:cmd', async (req, res) => {
   const body = cmd === 'volume' ? volumeChange(req.body) : cmd === 'seek' ? { time: seekTime(req.body?.time) } : {};
   res.json(await monitor.command(req.params.id as string, cmd as 'stop' | 'pause' | 'play' | 'volume' | 'seek', body));
 });
-// Panic button: kills every running app on every cast device on the LAN, not just Kino's.
+// Panic button: kills every running app on every cast device on the LAN, not just Kino's. POST only: any web page could send a GET (an image tag).
 api.post('/cast/stop-all', async (_req, res) => { res.json(await monitor.stopAll()); });
-api.get('/cast/stop-all', async (_req, res) => { res.json(await monitor.stopAll()); });
 api.post('/cast/handoff', async (_req, res) => { res.json(await cast.handoff()); });

@@ -87,7 +87,7 @@ The app keeps its data in `~/Library/Application Support/Kino/data`; replacing t
 - Cast Center: every TV and speaker on the network in one panel, live, including what other apps play. Per-device play, pause, seek, volume, stop, history with replay, "play here" hand-off, and switching to another source without losing your place.
 - Subtitles on the TV, a remote on every phone, auto-next on the TV. When the credits start, every phone shows the next episode with a countdown, and the Chromecast draws it on screen.
 - Every source row says what each TV on the network will do with it: plays, converts, or too heavy.
-- A "Stop everything" button, also at `/api/cast/stop-all` for a Home Assistant button or an iOS Shortcut. Optional Home Assistant webhook on play, pause and stop.
+- A "Stop everything" button, also at `POST /api/cast/stop-all` for a Home Assistant button or an iOS Shortcut. Optional Home Assistant webhook on play, pause and stop.
 
 **When a stream is bad**
 - Switch source while watching without losing your position (`S`). Audio track menu for multi-language files (`A`).

@@ -601,3 +601,20 @@ test('cache/clear: deleting one download row also takes it off the downloads lis
     for (const h of [pack, other]) await torrent.remove(h);
   }
 });
+
+test('cast/stop-all: only a POST stops anything, a GET any web page could send is a 404', async () => {
+  // stopAll logs one 'stop-all' line on stdout each time it runs: count them around each request.
+  const lines: string[] = []; const w = process.stdout.write;
+  const counted = async (method: string) => {
+    process.stdout.write = ((c: string | Uint8Array) => { lines.push(String(c)); return true; }) as typeof w;
+    try { return await call(method, '/cast/stop-all'); } finally { process.stdout.write = w; }
+  };
+  const stops = () => lines.filter((l) => l.includes('"msg":"stop-all"')).length;
+  const get = await counted('GET');
+  assert.equal(get.status, 404);
+  assert.equal(stops(), 0, 'a GET stops nothing');
+  const post = await counted('POST');
+  assert.equal(post.status, 200);
+  assert.ok(Array.isArray(post.body), 'the devices, as the Cast Center lists them');
+  assert.equal(stops(), 1);
+});
