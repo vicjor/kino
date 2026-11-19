@@ -5,7 +5,7 @@ import { httpError } from '../errors.js';
 import { getState } from '../store.js';
 import * as torrent from '../torrent.js';
 import { guard } from '../disk.js';
-import { serveFile, localFileUrl } from '../media/range.js';
+import { serveFile, localFileUrl, probeKey } from '../media/range.js';
 import { probe, probeFailure } from '../media/probe.js';
 import { decide, pickAudio } from '../media/decide.js';
 import * as hls from '../media/hls.js';
@@ -45,7 +45,7 @@ api.post('/play', async (req, res) => {
   const idx = torrent.pickVideoFile(t, fileIdx);
   if (idx < 0) throw httpError(400, 'No video file in this torrent');
   const f = t.files[idx];
-  const key = `${t.infoHash}:${idx}`;
+  const key = probeKey(t.infoHash, idx);
   const local = localFileUrl(t.infoHash, idx);
   const tg = target(body.target);
   let p;

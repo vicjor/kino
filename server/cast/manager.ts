@@ -1,14 +1,13 @@
-import { PORT, lanIp } from '../config.js';
 import { logger, errMsg } from '../log.js';
 import { httpError, statusOf, ownStatus, codeOf } from '../errors.js';
 import { emit } from '../events.js';
-import { getState, saveProgress, getProgress, update, saveSubChoice, MIN_PROGRESS_SEC } from '../store.js';
+import { getState, saveProgress, getProgress, update, saveSubChoice } from '../store.js';
 import { ensure, pickVideoFile, getTorrent } from '../torrent.js';
 import { guard } from '../disk.js';
 import { probe } from '../media/probe.js';
 import { decide, pickAudio, convertAll, saferStep, type Decision } from '../media/decide.js';
 import * as hls from '../media/hls.js';
-import { mimeFor } from '../media/range.js';
+import { mimeFor, localFileUrl, probeKey } from '../media/range.js';
 import { listSubtitles, getVtt } from '../subs/index.js';
 import { pushLearned } from '../media/credits.js';
 import * as upnext from './upnext.js';
@@ -25,6 +24,7 @@ import { CastSession, plainCastError, noAnswer, unreachable, type RawStatus } fr
 import type { CastHandoff, CastPlayRequest, CastStatus, SubtitleTrack, PlayMode, Target } from '../types.js';
 import type { DecodeCaps } from '../score.js';
 import { shouldNudge } from './keepawake.js';
+import { lanBase as base, mediaTypeOf, persistCast as persist, pickSubtitle } from './common.js';
 
 const log = logger('cast');
 
@@ -65,8 +65,8 @@ export const io = {
     const t = await ensure(id);
     const idx = pickVideoFile(t, fileIdx >= 0 ? fileIdx : undefined);
     if (idx < 0) throw httpError(400, 'No video file in this torrent');
-    const local = `http://127.0.0.1:${PORT}/api/file/${t.infoHash}/${idx}`;
-    return { t, idx, local, probe: await probe(`${t.infoHash}:${idx}`, local) };
+    const local = localFileUrl(t.infoHash, idx);
+    return { t, idx, local, probe: await probe(probeKey(t.infoHash, idx), local) };
   },
   subtitles: listSubtitles,
   connect: async (host: string, port: number): Promise<CastSession> => { const s = new CastSession(host, port); await s.connect(); return s; },
@@ -146,8 +146,6 @@ function restartOf(c: Current): CastPlayRequest | undefined { return pending?.re
 /** What start `gen` was asked, with the subtitle picked since if it is a restart (setSubtitle records it on `pending`). */
 function asked(gen: number, req: CastPlayRequest): CastPlayRequest { return pending?.gen === gen && pending.req ? pending.req : req; }
 
-function base(): string { return `http://${lanIp()}:${PORT}`; }
-
 /** Kino's own session, whichever transport carries it, plus the up-next popup state. */
 export function status(): CastStatus { return upnext.decorate(dlna.active() ? dlna.status() : lastStatus); }
 
@@ -160,7 +158,7 @@ function publish(): void {
     state: cur.loading || to != null ? 'BUFFERING' : r?.state || 'BUFFERING',
     currentTime: to ?? (r?.currentTime || 0) + cur.startOffset, duration: cur.duration || r?.duration,
     volume: r?.volume, muted: r?.muted, activeSubId: cur.activeSubId, videoId: cur.req.videoId, title: cur.req.title, poster: cur.req.poster,
-    infoHash: cur.infoHash, fileIdx: cur.fileIdx, mode: cur.mode, timeOffset: cur.startOffset, subOffsetMs: cur.subOffsetMs, type: cur.req.videoId?.includes(':') && !cur.req.videoId.startsWith('magnet:') ? 'series' : 'movie', subs: cur.tracks.map((t) => t.sub),
+    infoHash: cur.infoHash, fileIdx: cur.fileIdx, mode: cur.mode, timeOffset: cur.startOffset, subOffsetMs: cur.subOffsetMs, type: mediaTypeOf(cur.req.videoId), subs: cur.tracks.map((t) => t.sub),
   };
   emit('cast.status', status());
 }
@@ -190,13 +188,6 @@ function onStatus(c: Current, s: RawStatus): void {
   // Not while loading: a direct-play receiver reports 0 until it has seeked to the start time, and 0 must never overwrite where you were.
   if (c.req.videoId && !c.loading && s.state !== 'IDLE' && Date.now() - c.lastSave > 10_000) { c.lastSave = Date.now(); persist(c, s.currentTime + c.startOffset); }
   publish();
-}
-
-function persist(c: Current, pos: number): void {
-  if (!c.req.videoId || !(pos >= MIN_PROGRESS_SEC)) return;   // a refused load or a receiver still at 0 is not a position
-  const { metaId, season, episode } = parseVideoId(c.req.videoId);
-  const existing = getProgress(c.req.videoId);
-  saveProgress({ videoId: c.req.videoId, metaId, type: season != null ? 'series' : 'movie', pos, dur: c.duration || existing?.dur || 0, updatedAt: Date.now(), name: c.req.title, poster: c.req.poster || existing?.poster, background: existing?.background, season, episode, infoHash: c.infoHash, fileIdx: c.fileIdx });
 }
 
 async function onFinished(c: Current): Promise<void> {
@@ -349,7 +340,7 @@ async function start(gen: number, signal: AbortSignal, req: CastPlayRequest, opt
   const first = decide(p, 'chromecast', { hdr: p.hdr, audioIndex });
   const d = opts.safer ? convertAll(first, 'the TV could not play the first stream') : first;
   const sw = opts.safer === 2;
-  const type = req.videoId?.includes(':') && !req.videoId.startsWith('magnet:') ? 'series' : 'movie';
+  const type = mediaTypeOf(req.videoId);
   const done = (t.files[idx]?.progress ?? 0) >= 1;
   let known = opts.subs && opts.subs.infoHash === t.infoHash && opts.subs.fileIdx === idx && opts.subs.done === done ? opts.subs : undefined;
   if (!known) try { known = { infoHash: t.infoHash, fileIdx: idx, done, list: (await io.subtitles(type, req.videoId, t, idx)).filter((s) => s.available).slice(0, 30) }; } catch (e) { log.warn('subs failed', { err: errMsg(e) }); }
@@ -397,9 +388,7 @@ async function start(gen: number, signal: AbortSignal, req: CastPlayRequest, opt
   // Nothing asked for: the subtitle remembered for this video (null there means you turned them off).
   const saved = subId === undefined && req.videoId ? getProgress(req.videoId) : undefined;
   const subOffsetMs = req.subOffsetMs ?? saved?.subOffsetMs ?? 0;
-  let activeSubId = subId && tracks.some((x) => x.sub.id === subId) ? subId : undefined;
-  if (!activeSubId && saved?.subId && tracks.some((x) => x.sub.id === saved.subId)) activeSubId = saved.subId;
-  if (!activeSubId && opts.preferLang && saved?.subId !== null) activeSubId = tracks.find((x) => x.sub.lang === opts.preferLang)?.sub.id;
+  let activeSubId = pickSubtitle(subs, subId, saved, opts.preferLang);
   // The saved track is gone, or only its language was saved: the first track in it (the list puts its recommended one
   // first), as the browser picks. Saved as off (null) stays off.
   if (!activeSubId && saved?.subId !== null && saved?.subLang) activeSubId = tracks.find((x) => x.sub.lang === saved.subLang)?.sub.id;

@@ -2,7 +2,7 @@ import { errMsg } from '../log.js';
 import { httpError } from '../errors.js';
 import { getState, update } from '../store.js';
 import * as torrent from '../torrent.js';
-import { localFileUrl } from '../media/range.js';
+import { localFileUrl, probeKey } from '../media/range.js';
 import { probe, probeCached } from '../media/probe.js';
 import { listSubtitles, getVtt } from '../subs/index.js';
 import { syncSubtitle } from '../subs/sync.js';
@@ -20,7 +20,7 @@ api.get('/subs', async (req, res) => {
   const fileIdx = req.query.fileIdx != null && req.query.fileIdx !== '' ? Number(req.query.fileIdx) : undefined;
   const t = infoHash ? await torrent.ensure(await knownHash(infoHash, playRaceMs)) : undefined;
   if (t && fileIdx != null && t.files[fileIdx] && !probeCached(`${t.infoHash}:${fileIdx}`)) {
-    try { await probe(`${t.infoHash}:${fileIdx}`, localFileUrl(t.infoHash, fileIdx)); } catch (e) { log.debug('probe for subs failed', { err: errMsg(e) }); }
+    try { await probe(probeKey(t.infoHash, fileIdx), localFileUrl(t.infoHash, fileIdx)); } catch (e) { log.debug('probe for subs failed', { err: errMsg(e) }); }
   }
   const videoId = typeof req.query.videoId === 'string' && !req.query.videoId.startsWith('magnet:') ? req.query.videoId : undefined;
   const tracks = await listSubtitles(mt(String(req.query.type)), videoId, t, fileIdx, { acceptLanguage: req.headers['accept-language'] });

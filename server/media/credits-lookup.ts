@@ -2,7 +2,7 @@ import { logger, errMsg } from '../log.js';
 import { getState, update } from '../store.js';
 import * as torrent from '../torrent.js';
 import { probe } from './probe.js';
-import { localFileUrl } from './range.js';
+import { localFileUrl, probeKey } from './range.js';
 import { listSubtitles, getVtt } from '../subs/index.js';
 import { parseVtt } from '../subs/srt2vtt.js';
 import { estimateCredits } from './credits.js';
@@ -33,7 +33,7 @@ async function subtitleLines(t: Awaited<ReturnType<typeof torrent.ensure>>, vide
  */
 export async function creditsFor(p: FileRef): Promise<CreditsEstimate> {
   const t = torrent.getTorrent(p.infoHash) || (await torrent.ensure(p.infoHash));
-  const info = await probe(`${t.infoHash}:${p.fileIdx}`, localFileUrl(t.infoHash, p.fileIdx));
+  const info = await probe(probeKey(t.infoHash, p.fileIdx), localFileUrl(t.infoHash, p.fileIdx));
   const lines = await subtitleLines(t, p.videoId, p.fileIdx);
   const lastCueEndSec = lines.length ? Math.max(...lines.map((c) => c.end)) : undefined;
   return estimateCredits({ duration: info.duration, chapters: info.chapters, lastCueEndSec, learnedOffsets: p.metaId ? getState().credits[p.metaId] : undefined });
@@ -42,7 +42,7 @@ export async function creditsFor(p: FileRef): Promise<CreditsEstimate> {
 /** Where the opening titles sit in this file: a chapter, or a window you skipped in an earlier episode found again. */
 export async function introFor(p: FileRef): Promise<IntroEstimate> {
   const t = torrent.getTorrent(p.infoHash) || (await torrent.ensure(p.infoHash));
-  const info = await probe(`${t.infoHash}:${p.fileIdx}`, localFileUrl(t.infoHash, p.fileIdx));
+  const info = await probe(probeKey(t.infoHash, p.fileIdx), localFileUrl(t.infoHash, p.fileIdx));
   const samples = p.metaId ? getState().intros[p.metaId] : undefined;
   const lines = samples?.some((s) => s.anchor != null) ? await subtitleLines(t, p.videoId, p.fileIdx) : undefined;
   return estimateIntro({ duration: info.duration, chapters: info.chapters, lines, samples });

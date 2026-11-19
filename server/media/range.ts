@@ -16,6 +16,9 @@ export function mimeFor(name: string): string {
   return MIME[ext] || 'application/octet-stream';
 }
 
+/** The key probe.ts caches a torrent file's ffprobe answer under. */
+export const probeKey = (infoHash: string, idx: number): string => `${infoHash}:${idx}`;
+
 /** This server's own range URL for a torrent file: what ffprobe, ffmpeg and subtitle extraction read through. */
 export const localFileUrl = (infoHash: string, idx: number): string => `http://127.0.0.1:${PORT}/api/file/${infoHash}/${idx}`;
 

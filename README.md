@@ -234,7 +234,8 @@ server/            Express API and everything behind it (TypeScript, ESM)
   media/           bins (the ffmpeg and ffprobe that run), probe, decide, range, hls, credits, intro
   media/credits-lookup.ts  where one file's credits and opening titles sit, from what you skipped before, chapters, subtitles
   cast/            discovery (bonjour + dns-sd), session, manager, monitor (live device state), timeout (bounds every
-                   Chromecast request), dlna, upnext, keepawake (a paused Chromecast stays on)
+                   Chromecast request), dlna, upnext, keepawake (a paused Chromecast stays on), common (what
+                   both transports share: saving progress, the first subtitle, the LAN base URL)
   cast/lg.ts       an LG TV's own remote protocol (webOS SSAP over a websocket), to turn it off; the pairing key in lg-keys.json
   cast/dnssd.ts    Chromecasts through the system dns-sd, for a Mac where Home Assistant holds udp/5353
   subs/            OpenSubtitles hash, srt/vtt, audio-aligned sync, embedded and in-torrent tracks, signed ids (ids.ts,

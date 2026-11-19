@@ -6,20 +6,20 @@ import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { Torrent } from 'webtorrent';
-import { PORT, lanIp, DATA_DIR } from '../config.js';
+import { lanIp, DATA_DIR } from '../config.js';
 import { logger, errMsg } from '../log.js';
 import { httpError, ownStatus } from '../errors.js';
-import { getState, getProgress, saveProgress, saveSubChoice, writeAtomic, MIN_PROGRESS_SEC } from '../store.js';
+import { getState, getProgress, saveSubChoice, writeAtomic } from '../store.js';
 import { adoptSubId } from '../subs/ids.js';
 import { ensure, pickVideoFile } from '../torrent.js';
 import { guard } from '../disk.js';
 import { probe } from '../media/probe.js';
-import { mimeFor } from '../media/range.js';
+import { mimeFor, localFileUrl, probeKey } from '../media/range.js';
 import { listSubtitles } from '../subs/index.js';
-import { parseVideoId } from '../meta.js';
 import { haEvent } from '../ha.js';
 import { clientCount, onClientConnect } from '../events.js';
 import * as lg from './lg.js';
+import { lanBase, mediaTypeOf, persistCast, pickSubtitle } from './common.js';
 import type { DecodeCaps } from '../score.js';
 import type { CastDevice, CastHandoff, CastPlayRequest, CastStatus, ReceiverInfo, SubtitleTrack, MediaType } from '../types.js';
 
@@ -369,7 +369,6 @@ interface Cur {
 let cur: Cur | null = null;
 export const events = new EventEmitter();   // 'finished' -> { videoId, deviceId, subLang }; 'status' -> (state changed, republish)
 
-function base(): string { return `http://${lanIp()}:${PORT}`; }
 export function active(): boolean { return !!cur; }
 
 export function status(): CastStatus {
@@ -571,13 +570,6 @@ function positionNow(pos: number, at: number, playing: boolean, now = Date.now()
   return playing && at > 0 ? pos + Math.min(MAX_DRIFT_SEC, Math.max(0, (now - at) / 1000)) : pos;
 }
 
-function persist(c: Cur, pos: number): void {
-  if (!c.req.videoId || !(pos >= MIN_PROGRESS_SEC)) return;   // a renderer still at 0 is not a position
-  const { metaId, season, episode } = parseVideoId(c.req.videoId);
-  const existing = getProgress(c.req.videoId);
-  saveProgress({ videoId: c.req.videoId, metaId, type: season != null ? 'series' : 'movie', pos, dur: c.duration || existing?.dur || 0, updatedAt: Date.now(), name: c.req.title, poster: c.req.poster || existing?.poster, background: existing?.background, season, episode, infoHash: c.infoHash, fileIdx: c.fileIdx });
-}
-
 function didl(c: Cur, url: string, mime: string, sub?: { url: string }): string {
   const res = `<res protocolInfo="http-get:*:${mime}:DLNA.ORG_OP=01;DLNA.ORG_FLAGS=01700000000000000000000000000000">${esc(url)}</res>`;
   const cap = sub ? `<res protocolInfo="http-get:*:text/srt:*">${esc(sub.url)}</res><sec:CaptionInfoEx sec:type="srt">${esc(sub.url)}</sec:CaptionInfoEx><sec:CaptionInfo sec:type="srt">${esc(sub.url)}</sec:CaptionInfo>` : '';
@@ -591,10 +583,10 @@ function didl(c: Cur, url: string, mime: string, sub?: { url: string }): string 
  */
 async function load(c: Cur, startTime: number, still: () => boolean): Promise<boolean> {
   const sent = { subId: c.activeSubId, offsetMs: c.subOffsetMs };
-  const url = `${base()}/api/file/${c.infoHash}/${c.fileIdx}`;
+  const url = `${lanBase()}/api/file/${c.infoHash}/${c.fileIdx}`;
   const mime = mimeFor(c.fileName);
   const sub = c.activeSubId ? c.tracks.find((t) => t.id === c.activeSubId) : undefined;
-  const subUrl = sub ? `${base()}${sub.url.replace(/\.vtt$/, '.srt')}${c.subOffsetMs ? `?offset=${c.subOffsetMs}` : ''}` : undefined;
+  const subUrl = sub ? `${lanBase()}${sub.url.replace(/\.vtt$/, '.srt')}${c.subOffsetMs ? `?offset=${c.subOffsetMs}` : ''}` : undefined;
   // A TV waking its player from NO_MEDIA_PRESENT can sit on these for a while; be patient here, strict elsewhere.
   try { await soap(c.dev.avControl, AV, 'Stop', {}, 6000); } catch { /* nothing loaded */ }
   if (!still()) return false;
@@ -648,7 +640,7 @@ async function poll(c: Cur): Promise<void> {
     c.state = st === 'PLAYING' ? 'PLAYING' : st === 'PAUSED_PLAYBACK' ? 'PAUSED' : st === 'TRANSITIONING' ? 'BUFFERING' : st === 'STOPPED' || st === 'NO_MEDIA_PRESENT' ? 'IDLE' : c.state;
     if (c.state === 'PLAYING') c.sawPlaying = true;
     if (prev !== c.state) { if (c.state === 'PLAYING') haEvent('play', { title: c.req.title, target: c.dev.name }); else if (c.state === 'PAUSED') haEvent('pause', { title: c.req.title, target: c.dev.name }); }
-    if (c.req.videoId && c.state === 'PLAYING' && Date.now() - c.lastSave > 10_000) { c.lastSave = Date.now(); persist(c, c.pos); }
+    if (c.req.videoId && c.state === 'PLAYING' && Date.now() - c.lastSave > 10_000) { c.lastSave = Date.now(); persistCast(c, c.pos); }
     if (c.dev.rcControl && Date.now() % 4 < 2) {
       try {
         const [v, m] = await Promise.all([soap(c.dev.rcControl, RC, 'GetVolume', { Channel: 'Master' }, 3000), soap(c.dev.rcControl, RC, 'GetMute', { Channel: 'Master' }, 3000)]);
@@ -659,7 +651,7 @@ async function poll(c: Cur): Promise<void> {
     if (c.state === 'IDLE' && c.sawPlaying && Date.now() - c.started > 15_000) {
       const done = c.duration > 0 && c.pos / c.duration > 0.96;
       log.info(done ? 'finished' : 'stopped on the TV', { videoId: c.req.videoId, pos: c.pos });
-      if (c.req.videoId) persist(c, done ? c.duration : c.pos);
+      if (c.req.videoId) persistCast(c, done ? c.duration : c.pos);
       const info = { videoId: c.req.videoId, deviceId: c.dev.id, subLang: c.tracks.find((t) => t.id === c.activeSubId)?.lang, subOffsetMs: c.subOffsetMs };
       await stop(false, done ? 'finished' : 'cancelled');
       if (done) events.emit('finished', info);
@@ -699,17 +691,14 @@ async function castFile(req: CastPlayRequest, opts: CastOpts, signal: AbortSigna
   if (gone()) return status();
   const wake = early ?? awake(req.deviceId, signal);   // a TV that is off boots while ffprobe and the subtitle lookup run
   wake.catch(() => undefined);
-  const local = `http://127.0.0.1:${PORT}/api/file/${t.infoHash}/${idx}`;
   let duration = 0;
-  try { duration = (await io.probe(`${t.infoHash}:${idx}`, local)).duration; } catch (e) { log.warn('probe failed, continuing', { err: errMsg(e) }); }
-  const type: MediaType = req.videoId?.includes(':') && !req.videoId.startsWith('magnet:') ? 'series' : 'movie';
+  try { duration = (await io.probe(probeKey(t.infoHash, idx), localFileUrl(t.infoHash, idx))).duration; } catch (e) { log.warn('probe failed, continuing', { err: errMsg(e) }); }
+  const type: MediaType = mediaTypeOf(req.videoId);
   let tracks: SubtitleTrack[] = [];
   try { tracks = (await io.subtitles(type, req.videoId, t, idx)).filter((s) => s.available).slice(0, 30); } catch (e) { log.warn('subs failed', { err: errMsg(e) }); }
   if (gone()) return status();   // the wake heard it too, and stops unless another cast waits on it
   const saved = req.subId === undefined && req.videoId ? getProgress(req.videoId) : undefined;
-  let activeSubId = req.subId && tracks.some((x) => x.id === req.subId) ? req.subId : undefined;
-  if (!activeSubId && saved?.subId && tracks.some((x) => x.id === saved.subId)) activeSubId = saved.subId;
-  if (!activeSubId && opts.preferLang && saved?.subId !== null) activeSubId = tracks.find((x) => x.lang === opts.preferLang)?.id;
+  let activeSubId = pickSubtitle(tracks, req.subId, saved, opts.preferLang);
   if (!activeSubId && saved?.subId && saved.subLang) activeSubId = tracks.find((x) => x.lang === saved.subLang)?.id;
   const activeTrack = tracks.find((x) => x.id === activeSubId);
   if (req.videoId && (req.subId !== undefined || activeTrack)) saveSubChoice(req.videoId, { subId: activeTrack?.id ?? null, subLang: activeTrack?.lang, subOffsetMs: req.subOffsetMs ?? saved?.subOffsetMs });
@@ -736,7 +725,7 @@ async function castFile(req: CastPlayRequest, opts: CastOpts, signal: AbortSigna
   }
   // Stopped or replaced while the TV loaded, or a subtitle picked meanwhile reloads it: no poll for this load, that one arms its own.
   if (!loaded || !still()) return status();
-  if (req.videoId) persist(c, req.startTime || 0);
+  if (req.videoId) persistCast(c, req.startTime || 0);
   arm(c);
   log.info('playing on renderer', { device: dev.name, file: t.files[idx].name, sub: tracks.find((x) => x.id === activeSubId)?.label });
   return status();
@@ -788,7 +777,7 @@ export async function stop(haNotify = true, reason = 'stopped'): Promise<void> {
   const c = cur; cur = null;
   if (!c) { publish(); return; }
   if (c.poll) clearInterval(c.poll);
-  if (c.req.videoId && c.sawPlaying && reason !== 'finished') persist(c, c.pos);
+  if (c.req.videoId && c.sawPlaying && reason !== 'finished') persistCast(c, c.pos);
   if (haNotify) haEvent('stop', { title: c.req.title, target: c.dev.name, reason });
   try { await soap(c.dev.avControl, AV, 'Stop', {}, 5000); } catch { /* gone */ }
   publish();
