@@ -1,5 +1,5 @@
 import type { SubtitleTrack } from '../../server/types.js';
-import { langName } from '../lib/format';
+import { langName, units } from '../lib/format';
 import { Sheet } from './Sheet';
 import { isTouch } from '../lib/player-caps';
 
@@ -17,9 +17,9 @@ export function SubtitleMenu({ tracks, active, offsetMs, size, loading, applying
       <div className="sub-tools">
         <div className="sub-tool">
           <span>Sync</span>
-          <button className="btn small" disabled={!active} onClick={() => onOffset(offsetMs - 100)}>−0.1 s</button>
-          <strong>{(offsetMs / 1000).toFixed(1)} s</strong>
-          <button className="btn small" disabled={!active} onClick={() => onOffset(offsetMs + 100)}>+0.1 s</button>
+          <button className="btn small" disabled={!active} onClick={() => onOffset(offsetMs - 100)}>−0.1 seconds</button>
+          <strong>{units(offsetMs / 1000, 'second', 1)}</strong>
+          <button className="btn small" disabled={!active} onClick={() => onOffset(offsetMs + 100)}>+0.1 seconds</button>
           {onAuto ? <button className="btn small primary" disabled={!active || autoBusy} onClick={onAuto} title="Listen to the audio and line the subtitles up">{autoBusy ? <span className="spinner sm" /> : 'Auto'}</button> : null}
         </div>
         {onSize && size != null ? (

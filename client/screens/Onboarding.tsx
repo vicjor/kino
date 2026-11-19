@@ -5,6 +5,7 @@ import { useStore, setStore, toast } from '../lib/store';
 import { langName } from '../lib/format';
 import { ALWAYS_FIRST, choosableLangs, toggleLang } from '../lib/sub-langs';
 import { isIOS, isTouch } from '../lib/player-caps';
+import { paletteKeys } from '../lib/keys';
 import { IconCheck, IconPlus, IconTv, IconSpeaker, IconCast, IconAirplay, IconSearch, IconSubs, IconDownload, IconLayers, IconLock } from '../components/Icons';
 import { RecoveredNotice, RepairedNotice } from '../components/RecoveredNotice';
 import { Brand } from '../components/Brand';
@@ -110,7 +111,7 @@ export function Onboarding({ settings, onDone }: { settings: Settings; onDone: (
       body: (
         <>
           <div className="ob-tips">
-            <div><IconSearch /><span><strong>Search</strong> finds any movie or series{isTouch ? '' : ', ⌘K from anywhere'}.</span></div>
+            <div><IconSearch /><span><strong>Search</strong> finds any movie or series{isTouch ? '' : `, ${paletteKeys(navigator.userAgent)} from anywhere`}.</span></div>
             <div><IconCast /><span><strong>Cast</strong> controls every TV and speaker, even things you started elsewhere.</span></div>
             <div><IconLayers /><span><strong>Switch source</strong> while watching if a stream stutters{isTouch ? '' : ' (press S)'}.</span></div>
             <div><IconSubs /><span><strong>Subtitles</strong> can be nudged live if they run early or late.</span></div>

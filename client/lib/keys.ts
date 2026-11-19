@@ -20,3 +20,8 @@ export function endChord(e: object): void { startedAt = 0; closer = e; }
 export function chordPending(e?: object, now = Date.now()): boolean {
   return (!!e && e === closer) || (startedAt > 0 && now - startedAt < CHORD_MS);
 }
+
+/** The key that goes with K for the palette, as the keyboard labels it: ⌘ on Apple machines, Ctrl elsewhere. */
+export const modKey = (ua: string): string => (/Mac|iPhone|iPad|iPod/.test(ua) ? '⌘' : 'Ctrl');
+/** The palette shortcut as a hint: "⌘K" on a Mac, "Ctrl K" on Windows and Linux. */
+export const paletteKeys = (ua: string): string => (modKey(ua) === '⌘' ? '⌘K' : 'Ctrl K');

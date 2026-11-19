@@ -1,6 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startChord, endChord, chordPending, CHORD_MS } from '../client/lib/keys.ts';
+import { startChord, endChord, chordPending, CHORD_MS, modKey, paletteKeys } from '../client/lib/keys.ts';
+
+test('modKey, paletteKeys: ⌘K on Apple machines, Ctrl K on Windows and Linux', () => {
+  const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15';
+  const win = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36';
+  const linux = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36';
+  assert.equal(modKey(mac), '⌘');
+  assert.equal(paletteKeys(mac), '⌘K');
+  assert.equal(modKey(win), 'Ctrl');
+  assert.equal(paletteKeys(win), 'Ctrl K');
+  assert.equal(paletteKeys(linux), 'Ctrl K');
+});
 
 test('chordPending: nothing pending before any "g"', () => {
   assert.equal(chordPending(undefined, 1_000_000), false);

@@ -29,8 +29,8 @@ export const SHORTCUTS: { group: string; items: { keys: string[]; what: string }
   { group: 'Subtitles', items: [
     { keys: ['C'], what: 'Subtitle menu' },
     { keys: ['V'], what: 'Subtitles on or off' },
-    { keys: ['[', ']'], what: 'Nudge sync 0.1 s' },
-    { keys: ['⇧ [', '⇧ ]'], what: 'Nudge sync 1 s' },
+    { keys: ['[', ']'], what: 'Nudge sync 0.1 seconds' },
+    { keys: ['⇧ [', '⇧ ]'], what: 'Nudge sync 1 second' },
   ] },
   { group: 'View', items: [
     { keys: ['F'], what: 'Fullscreen' },

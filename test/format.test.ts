@@ -1,6 +1,45 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fmtTime, fmtBytes, langName, relTime, episodeTag, chosenFirst, audioDetail } from '../client/lib/format.ts';
+import { fmtTime, fmtBytes, langName, relTime, episodeTag, chosenFirst, audioDetail, units, minutesLeftLabel, skipLabel, offsetLabel, uptimeLabel, osName } from '../client/lib/format.ts';
+
+test('units: spelled out, singular only for exactly one', () => {
+  assert.equal(units(1, 'minute'), '1 minute');
+  assert.equal(units(12, 'minute'), '12 minutes');
+  assert.equal(units(0, 'hour'), '0 hours');
+  assert.equal(units(0.6, 'day'), '1 day', 'rounded before the plural is picked');
+  assert.equal(units(0.1, 'second', 1), '0.1 seconds');
+  assert.equal(units(1, 'second', 1), '1.0 seconds');
+  assert.equal(units(-1.2, 'second', 1), '-1.2 seconds');
+});
+
+test('minutesLeftLabel, skipLabel, offsetLabel: the player and resume copy', () => {
+  assert.equal(minutesLeftLabel(12), '12 minutes left');
+  assert.equal(minutesLeftLabel(1), '1 minute left');
+  assert.equal(skipLabel(10), '+10 seconds');
+  assert.equal(skipLabel(-10), '−10 seconds');
+  assert.equal(skipLabel(60), '+1 minute');
+  assert.equal(skipLabel(-120), '−2 minutes');
+  assert.equal(offsetLabel(300), '+0.3 seconds');
+  assert.equal(offsetLabel(0), '+0.0 seconds');
+  assert.equal(offsetLabel(-1200), '-1.2 seconds');
+});
+
+test('uptimeLabel: minutes, then hours, then days from two days on', () => {
+  assert.equal(uptimeLabel(0), '0 minutes');
+  assert.equal(uptimeLabel(61), '1 minute');
+  assert.equal(uptimeLabel(3599), '59 minutes');
+  assert.equal(uptimeLabel(3600), '1 hour');
+  assert.equal(uptimeLabel(3 * 3600 + 1800), '3 hours');
+  assert.equal(uptimeLabel(47 * 3600), '47 hours');
+  assert.equal(uptimeLabel(5 * 86400), '5 days');
+});
+
+test('osName: the platforms people know by name, anything else as given', () => {
+  assert.equal(osName('darwin'), 'macOS');
+  assert.equal(osName('linux'), 'Linux');
+  assert.equal(osName('win32'), 'Windows');
+  assert.equal(osName('aix'), 'aix');
+});
 
 test('fmtTime: minutes and seconds, hours only when there are some', () => {
   assert.equal(fmtTime(0), '0:00');
@@ -44,8 +83,8 @@ test('relTime: full words, singular for one, rounded at each step', () => {
   const ago = (sec: number) => relTime(now - sec * 1000, now);
   assert.equal(ago(0), 'just now');
   assert.equal(ago(89), 'just now');
-  assert.equal(ago(90), '2 min ago');
-  assert.equal(ago(59 * 60), '59 min ago');
+  assert.equal(ago(90), '2 minutes ago');
+  assert.equal(ago(59 * 60), '59 minutes ago');
   assert.equal(ago(59.5 * 60), '1 hour ago');
   assert.equal(ago(89 * 60), '1 hour ago');
   assert.equal(ago(90 * 60), '2 hours ago');

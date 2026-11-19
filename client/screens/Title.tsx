@@ -7,7 +7,7 @@ import { useRoute, navigate, playUrl } from '../lib/router';
 import { target } from '../lib/player-caps';
 import { toast, useStore, setStore } from '../lib/store';
 import { sendToTv, useSingleTv, resumeNow, type Tv } from '../lib/cast-actions';
-import { fmtDate } from '../lib/format';
+import { fmtDate, minutesLeftLabel } from '../lib/format';
 import { scrollBehavior } from '../lib/motion';
 import { TopBar } from '../components/TopBar';
 import { SourceList } from '../components/SourceList';
@@ -201,7 +201,7 @@ export function Title() {
   const weak = !!(streams && best && !streams.sources.some((s) => s.score > 0 && (s.seeders ?? 0) >= 5));
   const playLabel = caught ? 'Caught up' : resumable ? `Continue${epLabel ? ` ${epLabel}` : ''}` : type === 'series' && episode ? `Play ${epLabel}` : 'Play';
   const playSub = caught ? (caughtWhen ? nextEpisodeLabel(caughtWhen) : 'Pick an episode to watch again')
-    : resumable ? (left ? `${left} min left` : '') : loadingStreams ? 'Finding sources' : streams?.auto ? 'Best source' : '';
+    : resumable ? (left ? minutesLeftLabel(left) : '') : loadingStreams ? 'Finding sources' : streams?.auto ? 'Best source' : '';
   return (
     <div className="title">
       {/* The artwork carries the title, facts, plot and actions on a blurred, darkened foot, so the episodes and sources
@@ -262,7 +262,7 @@ export function Title() {
           <div className="sources-head">
             <div className="sources-title">
               <h2 className="h">{episode ? <><span className="ep-num">{epLabel}</span>{episode.title || `Episode ${episode.episode}`}</> : 'Sources'}</h2>
-              {episode ? <div className="ep-meta">{[fmtDate(episode.released), ratings?.episodes?.[episode.id] ? `IMDb ${ratings.episodes[episode.id].rating.toFixed(1)}` : '', left ? `You stopped with ${left} min left` : ''].filter(Boolean).join(' · ')}</div> : left ? <div className="ep-meta">You stopped with {left} min left. Play resumes from there.</div> : null}
+              {episode ? <div className="ep-meta">{[fmtDate(episode.released), ratings?.episodes?.[episode.id] ? `IMDb ${ratings.episodes[episode.id].rating.toFixed(1)}` : '', left ? `You stopped with ${minutesLeftLabel(left)}` : ''].filter(Boolean).join(' · ')}</div> : left ? <div className="ep-meta">You stopped with {minutesLeftLabel(left)}. Play resumes from there.</div> : null}
               {episode?.overview ? <p className="ep-overview">{episode.overview}</p> : null}
             </div>
             <button className="iconbtn" aria-label="Reload sources" onClick={loadStreams}><IconRefresh /></button>

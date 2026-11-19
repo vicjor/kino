@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef, useCallback, useId } from 'react';
 import { resumePoint, isFinished, minutesLeft } from '../lib/progress';
 import type { Episode, Progress } from '../../server/types.js';
-import { fmtDate } from '../lib/format';
+import { fmtDate, minutesLeftLabel } from '../lib/format';
 import { seasonsOf, sortedEpisodes, isReleased, nextUp } from '../lib/episodes';
 import { IconPlay, IconCheck, IconBack, IconCast } from './Icons';
 import { onTabKeys } from '../lib/tabs';
@@ -70,7 +70,7 @@ export function EpisodePicker({ videos, progress, selected, onSelect, onPlay, on
           const future = !isReleased(e, now);
           const sel = selected === e.id;
           const left = p && resumePoint(p) != null ? minutesLeft(p) : 0;
-          const sub = future ? `Airs ${fmtDate(e.released)}` : left ? `${left} min left` : fmtDate(e.released);
+          const sub = future ? `Airs ${fmtDate(e.released)}` : left ? minutesLeftLabel(left) : fmtDate(e.released);
           return (
             <li key={e.id}>
               <button className={`epc${sel ? ' sel' : ''}${future ? ' future' : ''}${done ? ' done' : ''}`} onClick={() => (sel && onPlay ? onPlay(e) : onSelect(e))} aria-current={sel ? 'true' : undefined}>

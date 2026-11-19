@@ -14,7 +14,7 @@ import { useContinueCast, continueTarget } from '../components/ContinueCast';
 import { navigate, titleUrl } from '../lib/router';
 import { handoffHere } from '../lib/cast-actions';
 import { isMagnetId, metaIdOf } from '../lib/handoff';
-import { fmtTime, episodeCode } from '../lib/format';
+import { fmtTime, episodeCode, minutesLeftLabel } from '../lib/format';
 import { openCastCenter } from '../lib/overlays';
 import { OPEN_CAST_KEYS } from '../components/CastHotkeys';
 import { Keycap } from '../components/Hud';
@@ -49,7 +49,7 @@ function Spotlight({ p, onClose, onCast, castLabel }: { p: Progress; onClose: ()
       <div className="spot-body">
         <div className="spot-kicker">{p.pos ? 'Continue watching' : 'Up next'}</div>
         <h1 className="spot-title">{show}</h1>
-        <div className="spot-sub">{[label, episode, left ? `${left} min left` : p.pos ? '' : 'Next episode'].filter(Boolean).join(' · ')}</div>
+        <div className="spot-sub">{[label, episode, left ? minutesLeftLabel(left) : p.pos ? '' : 'Next episode'].filter(Boolean).join(' · ')}</div>
         <div className="spot-bar" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${pct}%` }} /></div>
         <div className="spot-actions">
           <button className="btn primary big" onClick={() => navigate(resumeUrl(p))}><IconPlay /> {p.pos ? 'Continue' : 'Play'}</button>
@@ -123,7 +123,7 @@ function CastSpot({ cast, item }: { cast: CastStatus; item?: Progress }) {
       <div className="spot-body">
         <div className="spot-kicker live"><i />Now on {cast.deviceName || 'the TV'}{cast.state === 'BUFFERING' ? ' · loading' : ''}</div>
         <h1 className="spot-title">{name.show}</h1>
-        {name.episode || label ? <div className="spot-sub">{[label, name.episode, left ? `${left} min left` : ''].filter(Boolean).join(' · ')}</div> : null}
+        {name.episode || label ? <div className="spot-sub">{[label, name.episode, left ? minutesLeftLabel(left) : ''].filter(Boolean).join(' · ')}</div> : null}
         <div className="spot-scrub" style={{ ['--p' as string]: `${pct}%` }}>
           <span>{fmtTime(pos)}</span>
           <input type="range" min={0} max={dur || 1} step={1} value={pos} disabled={!dur} aria-label="Position"
@@ -144,7 +144,7 @@ function CastSpot({ cast, item }: { cast: CastStatus; item?: Progress }) {
           <div className="spot-keys">
             {/* The hints are for sighted keyboard users; the button that opens the full list stays reachable */}
             <span aria-hidden="true"><Keycap k="Space" /> Play</span>
-            <span aria-hidden="true"><Keycap k="←" /><Keycap k="→" /> 10 s</span>
+            <span aria-hidden="true"><Keycap k="←" /><Keycap k="→" /> 10 seconds</span>
             <span aria-hidden="true"><Keycap k="↑" /><Keycap k="↓" /> Volume</span>
             {item?.season != null ? <span aria-hidden="true"><Keycap k="N" /> Next</span> : null}
             <button className="spot-keys-all" onClick={() => window.dispatchEvent(new Event(OPEN_CAST_KEYS))}><Keycap k="?" /> All shortcuts</button>

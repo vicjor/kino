@@ -112,12 +112,12 @@ export function Controls(p: ControlsProps) {
         </div>
       </div>
       <div className="pc-mid">
-        <button className="pc-skip" aria-label="Back 10 seconds" data-hint="Back 10 s" data-key="J" onClick={() => p.onSkip(-10)}><IconBack10 size={36} /></button>
+        <button className="pc-skip" aria-label="Back 10 seconds" data-hint="Back 10 seconds" data-key="J" onClick={() => p.onSkip(-10)}><IconBack10 size={36} /></button>
         <button className="pc-play" aria-label={p.playing ? 'Pause' : 'Play'} data-hint={p.playing ? 'Pause' : 'Play'} data-key="K" onClick={p.onPlayPause}>
           <span className={`pc-glyph${p.playing ? '' : ' off'}`}><IconPause size={38} /></span>
           <span className={`pc-glyph play${p.playing ? ' off' : ''}`}><IconPlay size={38} /></span>
         </button>
-        <button className="pc-skip" aria-label="Forward 10 seconds" data-hint="Forward 10 s" data-key="L" onClick={() => p.onSkip(10)}><IconFwd10 size={36} /></button>
+        <button className="pc-skip" aria-label="Forward 10 seconds" data-hint="Forward 10 seconds" data-key="L" onClick={() => p.onSkip(10)}><IconFwd10 size={36} /></button>
       </div>
       <div className="pc-bottom">
         <div className="pc-info">

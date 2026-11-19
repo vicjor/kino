@@ -5,7 +5,7 @@ import { navigate } from '../lib/router';
 import { FIELDS, fieldChange, type FieldKey } from '../lib/settings-fields';
 import { setStore, toast } from '../lib/store';
 import { useLoad } from '../lib/use-load';
-import { fmtBytes, relTime, langName } from '../lib/format';
+import { fmtBytes, relTime, langName, osName, uptimeLabel, units } from '../lib/format';
 import { scrollBehavior } from '../lib/motion';
 import { storageBar } from '../lib/storage';
 import { streamSource, downCallout } from '../lib/addon-status';
@@ -35,7 +35,7 @@ function binWarning(h: Record<string, unknown> | null): { title: string; text: s
 /** An addon row's line while Kino skips it for not answering. The skip lasts a minute, so seconds are enough. */
 function skippedText(failedAt: number, now = Date.now()): string {
   const s = Math.max(1, Math.round((now - failedAt) / 1000));
-  return `Skipped, did not answer ${s} second${s === 1 ? '' : 's'} ago`;
+  return `Skipped, did not answer ${units(s, 'second')} ago`;
 }
 
 /** The downloads in Library: Library scrolls to them when it opens with show=downloads. */
@@ -200,7 +200,7 @@ export function Settings() {
             {LANG_PRESETS.filter((c) => !s.subLangs.includes(c)).map((c) => <button key={c} className="chip" onClick={() => addLang(c)}>+ {langName(c)}</button>)}
           </div>
           <div className="addrow">
-            <input type="text" placeholder="ISO 639-2 code, e.g. ita" value={newLang} maxLength={3} onChange={(e) => setNewLang(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addLang(newLang); }} />
+            <input type="text" placeholder="Three-letter language code, e.g. ita" value={newLang} maxLength={3} onChange={(e) => setNewLang(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addLang(newLang); }} />
             <button className="btn small" disabled={newLang.trim().length !== 3} onClick={() => addLang(newLang)}><IconPlus /> Add</button>
           </div>
           <div className="field">
@@ -225,7 +225,7 @@ export function Settings() {
                 <i style={{ width: `${bar.cached}%` }} />
               </div>
               <p className="hint">
-                {bar.used} · {fmtBytes(disk.freeBytes)} free on disk{disk.hlsBytes ? ` · ${fmtBytes(disk.hlsBytes)} transcode temp` : ''}
+                {bar.used} · {fmtBytes(disk.freeBytes)} free on disk{disk.hlsBytes ? ` · ${fmtBytes(disk.hlsBytes)} of temporary video files` : ''}
                 {bar.savedLine ? savedOver
                   ? <a className="disk-saved" href={LIBRARY_DOWNLOADS}><i aria-hidden="true" /><span style={{ textDecoration: 'underline' }}>{bar.savedLine}</span></a>
                   : <span className="disk-saved"><i aria-hidden="true" />{bar.savedLine}</span> : null}
@@ -249,7 +249,7 @@ export function Settings() {
 
         <section id="s-cast">
           <h2>Cast</h2>
-          <p className="hint">Control every Chromecast, TV and speaker on this network, whoever started it. <code>/api/cast/stop-all</code> stops everything at once, for Home Assistant or a shortcut.</p>
+          <p className="hint">Control every Chromecast, TV and speaker on this network, whoever started it. "Stop everything" in Cast controls stops them all at once; Home Assistant or Shortcuts can do the same by sending a POST to <code>/api/cast/stop-all</code>.</p>
           <button className="btn ghost" onClick={openCastCenter}>Open Cast controls</button>
         </section>
 
@@ -284,10 +284,10 @@ export function Settings() {
           <h2>About</h2>
           {health ? (
             <ul className="list about">
-              <li className="row"><span className="grow">Kino {String(health.version || '')}<small>Node {String(health.node || '')} on {String(health.platform || '')}, up {Math.round(Number(health.uptime || 0) / 3600)} h</small></span></li>
+              <li className="row"><span className="grow">Kino {String(health.version || '')}<small>Node {String(health.node || '')} on {osName(String(health.platform || ''))}, up {uptimeLabel(Number(health.uptime || 0))}</small></span></li>
               <li className="row"><span className="grow">Reachable at http://{String(health.lanIp || location.hostname)}:{location.port || 1234}<small>open this on phones and laptops on the same Wi-Fi</small></span></li>
               <li className="row"><span className="grow">Transcoder<small>{health.ffmpeg ? `ffmpeg present, ${health.hwEncoder ? 'hardware (VideoToolbox) encode' : 'software encode'}` : 'ffmpeg does not run: only direct play works'}</small></span>{health.ffmpeg ? <span className="chip ok">OK</span> : <span className="chip warn">Not working</span>}</li>
-              <li className="row"><span className="grow">IMDb ratings data<small>{health.imdbDatasets == null ? 'not downloaded yet' : `updated ${health.imdbDatasets} day${health.imdbDatasets === 1 ? '' : 's'} ago, refreshes weekly`}</small></span></li>
+              <li className="row"><span className="grow">IMDb ratings data<small>{health.imdbDatasets == null ? 'not downloaded yet' : `updated ${units(Number(health.imdbDatasets), 'day')} ago, refreshes weekly`}</small></span></li>
               <li className="row"><span className="grow">TVs and speakers found<small>{String(health.castDevices ?? 0)} on the network</small></span></li>
               <li className="row"><span className="grow">Data folder<small>{String(health.dataDir || '')}</small></span></li>
             </ul>

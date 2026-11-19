@@ -3,7 +3,7 @@ import type { Episode } from '../../server/types.js';
 import type { MetaPreview, Progress, DownloadInfo, Upcoming } from '../../server/types.js';
 import { navigate, titleUrl, playUrl } from '../lib/router';
 import { zoomFrom } from '../lib/zoom';
-import { fmtSpeed, fmtBytes, episodeCode } from '../lib/format';
+import { fmtSpeed, fmtBytes, episodeCode, minutesLeftLabel } from '../lib/format';
 import { minutesLeft } from '../lib/progress';
 import { api } from '../lib/api';
 import { setStore, toast } from '../lib/store';
@@ -101,7 +101,7 @@ export function ProgressCard({ p, onRemove, onCast, castLabel }: { p: Progress; 
           <div className="bar"><i style={{ width: `${pct}%` }} /></div>
         </WidePoster>
         <div className="name">{show}</div>
-        <div className="sub">{[episode, left ? `${left} min left` : p.pos ? '' : 'Next episode'].filter(Boolean).join(' · ')}</div>
+        <div className="sub">{[episode, left ? minutesLeftLabel(left) : p.pos ? '' : 'Next episode'].filter(Boolean).join(' · ')}</div>
       </button>
     </Removable>
   );

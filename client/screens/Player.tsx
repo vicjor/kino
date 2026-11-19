@@ -25,7 +25,7 @@ import { onSse } from '../lib/sse';
 import { startWords, stoppedWords, toastWords, endedEarlyWords, endedEarlyDetail, waitWords, stallWords, slowWords, stutterWords, autoRetry, transcodeFallback, MEDIA } from '../lib/play-errors';
 import { SourcesSheet } from '../components/SourcesSheet';
 import { sortedEpisodes } from '../components/EpisodePicker';
-import { fmtTime, langName, audioDetail } from '../lib/format';
+import { fmtTime, langName, audioDetail, units, offsetLabel, skipLabel } from '../lib/format';
 import { playerKeyRoute, anyPlayerSheet, type PlayerSheets } from '../lib/player-keys';
 import { SLEEP_CHOICES, startSleep, sleepLeft, sleepPicked, sleepBadge, sleepWords, keepSleep, keptSleep, type Sleep, type SleepChoice } from '../lib/sleep';
 import { Sheet } from '../components/Sheet';
@@ -358,7 +358,7 @@ function LocalPlayer() {
     try {
       const r = await api.subSync({ id: activeSub.id, infoHash: p.infoHash, fileIdx: play.fileIdx, from: absTime() });
       setSubOffset(r.offsetMs);
-      flash(r.score < 0.35 ? `Weak match, tried ${(r.offsetMs / 1000).toFixed(1)} s` : `Subtitles synced ${r.offsetMs >= 0 ? '+' : ''}${(r.offsetMs / 1000).toFixed(1)} s`);
+      flash(r.score < 0.35 ? `Weak match, tried ${units(r.offsetMs / 1000, 'second', 1)}` : `Subtitles synced ${offsetLabel(r.offsetMs)}`);
     } catch (e) { toast((e as Error).message, 'error', 6000); } finally { setSyncBusy(false); }
   };
   const pickSub = (t: SubtitleTrack | null) => {
@@ -586,7 +586,7 @@ function LocalPlayer() {
   const lastSub = useRef<SubtitleTrack | null>(null);
   useEffect(() => { if (activeSub) lastSub.current = activeSub; }, [activeSub]);
   const playPause = useCallback(() => { const v = videoRef.current; flash(v?.paused ? 'Play' : 'Pause', 'K'); togglePlay(); }, [flash, togglePlay]);
-  const skipH = (d: number, key?: string) => { introLearn.onJump(absTime(), absTime() + d); flash(`${d > 0 ? '+' : '−'}${Math.abs(d) >= 60 ? `${Math.abs(d) / 60} min` : `${Math.abs(d)} s`}`, key); skip(d); };
+  const skipH = (d: number, key?: string) => { introLearn.onJump(absTime(), absTime() + d); flash(skipLabel(d), key); skip(d); };
   const muteH = () => { flash(muted ? 'Sound on' : 'Muted', 'M'); toggleMute(); };
   const volH = (x: number, key?: string) => { const v = Math.round(Math.min(1, Math.max(0, x)) * 100) / 100; flash(`Volume ${Math.round(v * 100)}%`, key); setVol(v); };
   const speedH = (dir: 1 | -1) => {
@@ -770,7 +770,7 @@ function LocalPlayer() {
         const d = x < 0.34 ? -10 : 10;
         introLearn.onJump(absTime(), absTime() + d);
         void skip(d);
-        showNotice({ text: d < 0 ? '−10 s' : '+10 s' }, 800);
+        showNotice({ text: skipLabel(d) }, 800);
         lastTap.current = { t: 0, x };
         return;
       }
@@ -833,8 +833,8 @@ function LocalPlayer() {
       else if (k === '>') { speedH(1); stop(); }
       else if (k === ',') { frameH(-1); stop(); }
       else if (k === '.') { frameH(1); stop(); }
-      else if (k === '[' || k === '{') { const d = k === '{' ? 1000 : 100; setSubOffset((o) => { flash(`Subtitles ${(o - d) / 1000 >= 0 ? '+' : ''}${((o - d) / 1000).toFixed(1)} s`, k === '{' ? '⇧ [' : '['); return o - d; }); stop(); }
-      else if (k === ']' || k === '}') { const d = k === '}' ? 1000 : 100; setSubOffset((o) => { flash(`Subtitles ${(o + d) / 1000 >= 0 ? '+' : ''}${((o + d) / 1000).toFixed(1)} s`, k === '}' ? '⇧ ]' : ']'); return o + d; }); stop(); }
+      else if (k === '[' || k === '{') { const d = k === '{' ? 1000 : 100; setSubOffset((o) => { flash(`Subtitles ${offsetLabel(o - d)}`, k === '{' ? '⇧ [' : '['); return o - d; }); stop(); }
+      else if (k === ']' || k === '}') { const d = k === '}' ? 1000 : 100; setSubOffset((o) => { flash(`Subtitles ${offsetLabel(o + d)}`, k === '}' ? '⇧ ]' : ']'); return o + d; }); stop(); }
       else if (k === '?') { setKeysOpen(true); stop(); }
       else if (k === 'Escape') { leave(); }
     };

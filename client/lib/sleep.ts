@@ -1,3 +1,5 @@
+import { units } from './format';
+
 /** The sleep timer: off, pause at the end of this episode, or pause `min` minutes after it was set (at `until`). */
 export type Sleep = null | 'episode' | { min: number; until: number };
 /** A row in the sleep sheet: off, a number of minutes, or the end of this episode. */
@@ -27,15 +29,14 @@ export function sleepPicked(s: Sleep, c: SleepChoice): boolean {
 /** The small badge on the moon button: minutes left, or "End" for the end of this episode. */
 export function sleepBadge(s: Sleep, leftMs: number): string | undefined {
   if (s === null) return undefined;
-  return s === 'episode' ? 'End' : `${Math.max(1, Math.ceil(leftMs / 60_000))}m`;
+  return s === 'episode' ? 'End' : units(Math.max(1, Math.ceil(leftMs / 60_000)), 'minute');
 }
 
-/** The same in full words, for the button's label and tooltip. */
+/** The same as a sentence, for the button's label and tooltip. */
 export function sleepWords(s: Sleep, leftMs: number): string {
   if (s === null) return 'Sleep timer';
   if (s === 'episode') return 'Sleep timer: pauses at the end of this episode';
-  const m = Math.max(1, Math.ceil(leftMs / 60_000));
-  return `Sleep timer: pauses in ${m} minute${m === 1 ? '' : 's'}`;
+  return `Sleep timer: pauses in ${units(Math.max(1, Math.ceil(leftMs / 60_000)), 'minute')}`;
 }
 
 /** What a player plays, as far as the sleep timer cares. */

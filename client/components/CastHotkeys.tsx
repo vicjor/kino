@@ -6,7 +6,7 @@ import { tvVolume, stepVolume, setTvVolume, type VolumeChange } from '../lib/cas
 import { handoffHere } from '../lib/cast-actions';
 import { isTouch } from '../lib/player-caps';
 import { chordPending } from '../lib/keys';
-import { langName } from '../lib/format';
+import { langName, skipLabel } from '../lib/format';
 import { Hud, useHud } from './Hud';
 import { CastShortcutsSheet } from './LazyOverlays';
 import { openDeviceController } from '../lib/overlays';
@@ -33,7 +33,7 @@ export function CastHotkeys() {
     const dur = cast.duration || 0; const pos = cast.currentTime || 0;
     const isSeries = cast.type === 'series';
     const seekTo = (t: number) => apply(() => api.castSeek(Math.max(0, Math.min(dur ? dur - 1 : t, t))));
-    const skip = (d: number, key: string) => { if (!dur) return; flash(`${d > 0 ? '+' : '−'}${Math.abs(d) >= 60 ? `${Math.abs(d) / 60} min` : `${Math.abs(d)} s`}`, key); void seekTo(pos + d); };
+    const skip = (d: number, key: string) => { if (!dur) return; flash(skipLabel(d), key); void seekTo(pos + d); };
     // Read the store at press time: a held arrow key builds on the level the previous press set.
     const tv = () => { const s = getStore(); return tvVolume(s.cast, s.receivers); };
     const setVol = (b: VolumeChange) => { setTvVolume(tv(), b).catch((e) => toast((e as Error).message, 'error')); };

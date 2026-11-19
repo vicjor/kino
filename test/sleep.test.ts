@@ -31,14 +31,14 @@ test('sleepPicked: exactly one row is on, the one that was picked', () => {
 
 test('sleepPicked: half way through 30 minutes the 30 minute row stays on, not the 15 minute one', () => {
   const s = startSleep(30, 0);
-  assert.equal(sleepBadge(s, sleepLeft(s, 15 * MIN)), '15m', 'fifteen minutes left');
+  assert.equal(sleepBadge(s, sleepLeft(s, 15 * MIN)), '15 minutes', 'fifteen minutes left');
   assert.deepEqual(picked(s), ['30 minutes']);
 });
 
 test('sleepBadge: minutes left rounded up, at least 1, a word for the end of the episode, nothing when off', () => {
-  assert.equal(sleepBadge(startSleep(45, 0), 45 * MIN), '45m');
-  assert.equal(sleepBadge(startSleep(45, 0), 44 * MIN + 1), '45m');
-  assert.equal(sleepBadge(startSleep(15, 0), 0), '1m');
+  assert.equal(sleepBadge(startSleep(45, 0), 45 * MIN), '45 minutes');
+  assert.equal(sleepBadge(startSleep(45, 0), 44 * MIN + 1), '45 minutes');
+  assert.equal(sleepBadge(startSleep(15, 0), 0), '1 minute');
   assert.equal(sleepBadge('episode', 0), 'End');
   assert.equal(sleepBadge(null, 0), undefined);
 });

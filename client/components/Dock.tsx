@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as RPoi
 import { useRoute, navigate } from '../lib/router';
 import { useStore, setStore } from '../lib/store';
 import { openPalette } from '../lib/overlays';
+import { paletteKeys } from '../lib/keys';
 import { Spring, SPRINGS, VelocityTracker, project, rubberband } from '../lib/spring';
 import { Brand } from './Brand';
 import { IconHome, IconSearch, IconLibrary, IconGear, IconCast, IconGrid } from './Icons';
@@ -182,7 +183,7 @@ export function Dock() {
       <div className="dock-tools">
         <button className={`dock-tool dock-search${head === 'search' ? ' active' : ''}`} aria-label="Search"
           onClick={() => { if (wide()) openPalette(); else if (head !== 'search') navigate('/search', false, 'none'); }}>
-          <IconSearch size={20} /><span className="dock-tool-label">Search</span><kbd className="dock-kbd" aria-hidden="true">⌘K</kbd>
+          <IconSearch size={20} /><span className="dock-tool-label">Search</span><kbd className="dock-kbd" aria-hidden="true">{paletteKeys(navigator.userAgent)}</kbd>
         </button>
         <button className={`dock-tool dock-cast${ccOpen ? ' active' : ''}${casting ? ' casting' : ''}`} aria-label="TVs" aria-pressed={ccOpen} title="TVs" onClick={() => setStore({ ccOpen: !ccOpen, ccOrigin: null })}>
           <IconCast size={20} />

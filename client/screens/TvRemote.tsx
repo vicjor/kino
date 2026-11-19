@@ -5,7 +5,7 @@ import { useStore, setStore, getStore, toast } from '../lib/store';
 import { navigate, back, playUrl, titleUrl, type PlayParams } from '../lib/router';
 import { metaIdOf, isMagnetId, episodeOf, handoffPlayParams } from '../lib/handoff';
 import { resumePoint } from '../lib/progress';
-import { fmtTime, langName } from '../lib/format';
+import { fmtTime, langName, skipLabel } from '../lib/format';
 import { tvVolume, setTvVolume, stepVolume } from '../lib/cast-volume';
 import { episodeSource } from '../lib/episodes';
 import { sendToTv, type Tv } from '../lib/cast-actions';
@@ -192,8 +192,8 @@ export function TvRemote({ p }: { p: PlayParams }) {
       if (k === '?') { setSheet('keys'); stopKey(); return; }
       if (!on) return;
       if (k === ' ' || k === 'k' || k === 'K') { flash(playing ? 'Pause' : 'Play', 'K'); void playPause(); stopKey(); }
-      else if (k === 'ArrowLeft' || k === 'j' || k === 'J') { const d = e.shiftKey ? -60 : -10; flash(d === -60 ? '−1 min' : '−10 s', k === 'ArrowLeft' ? (e.shiftKey ? '⇧ ←' : '←') : 'J'); skip(d); stopKey(); }
-      else if (k === 'ArrowRight' || k === 'l' || k === 'L') { const d = e.shiftKey ? 60 : 10; flash(d === 60 ? '+1 min' : '+10 s', k === 'ArrowRight' ? (e.shiftKey ? '⇧ →' : '→') : 'L'); skip(d); stopKey(); }
+      else if (k === 'ArrowLeft' || k === 'j' || k === 'J') { const d = e.shiftKey ? -60 : -10; flash(skipLabel(d), k === 'ArrowLeft' ? (e.shiftKey ? '⇧ ←' : '←') : 'J'); skip(d); stopKey(); }
+      else if (k === 'ArrowRight' || k === 'l' || k === 'L') { const d = e.shiftKey ? 60 : 10; flash(skipLabel(d), k === 'ArrowRight' ? (e.shiftKey ? '⇧ →' : '→') : 'L'); skip(d); stopKey(); }
       else if (/^[0-9]$/.test(k) && dur) { const n = Number(k); flash(n ? `${n * 10}%` : 'Start', k); seek(dur * n / 10); stopKey(); }
       else if ((k === 'ArrowUp' || k === 'ArrowDown') && !tv.unknown) { const v = stepVolume(tv.level, k === 'ArrowUp' ? 0.05 : -0.05); flash(`Volume ${Math.round(v * 100)}%`, k === 'ArrowUp' ? '↑' : '↓'); void setTvVolume(tv, { level: v, muted: false }).catch(() => undefined); stopKey(); }
       else if ((k === 'm' || k === 'M') && !tv.unknown) { flash(tv.muted ? 'Sound on' : 'Muted', 'M'); void setTvVolume(tv, { muted: !tv.muted }).catch(() => undefined); stopKey(); }
@@ -242,12 +242,12 @@ export function TvRemote({ p }: { p: PlayParams }) {
             <>
               <Scrubber cur={pos} dur={dur} onSeek={(t) => { introLearn.onJump(pos, t); seek(t); }} disabled={!dur} />
               <div className="tvr-transport">
-                <button className="tvr-skip" disabled={!dur} aria-label="Back 10 seconds" data-hint="Back 10 s" data-key="J" onClick={() => skip(-10)}><IconBack10 size={40} /></button>
+                <button className="tvr-skip" disabled={!dur} aria-label="Back 10 seconds" data-hint="Back 10 seconds" data-key="J" onClick={() => skip(-10)}><IconBack10 size={40} /></button>
                 <button className="tvr-play" disabled={busy && cast.state === 'IDLE'} aria-label={playing ? 'Pause' : 'Play'} data-hint={playing ? 'Pause' : 'Play'} data-key="K" onClick={() => void playPause()}>
                   <span className={`pc-glyph${playing ? '' : ' off'}`}><IconPause size={44} /></span>
                   <span className={`pc-glyph play${playing ? ' off' : ''}`}><IconPlay size={44} /></span>
                 </button>
-                <button className="tvr-skip" disabled={!dur} aria-label="Forward 10 seconds" data-hint="Forward 10 s" data-key="L" onClick={() => skip(10)}><IconFwd10 size={40} /></button>
+                <button className="tvr-skip" disabled={!dur} aria-label="Forward 10 seconds" data-hint="Forward 10 seconds" data-key="L" onClick={() => skip(10)}><IconFwd10 size={40} /></button>
               </div>
               {tv.unknown ? null : <LevelSlider className="tvr-vol" value={level} label={`${tvName} volume`} onChange={onVol}
                 before={<button className="tvr-vol-ico" aria-label={tv.muted ? 'Unmute' : 'Mute'} onClick={() => void setTvVolume(tv, { muted: !tv.muted }).catch(() => undefined)}>{tv.muted || level === 0 ? <IconMute /> : <IconVol />}</button>}

@@ -26,15 +26,43 @@ export function fmtDate(iso?: string): string {
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
-/** "just now", "5 min ago", "1 hour ago", "3 days ago". `now` is there for tests. */
+type Unit = 'second' | 'minute' | 'hour' | 'day';
+/**
+ * A number with its unit spelled out: "1 minute", "12 minutes", "0.5 seconds". `digits` fixes the decimals
+ * ("1.0 seconds"); the unit is singular only when the number reads as exactly 1. Every time unit in the UI goes through here.
+ */
+export function units(n: number, unit: Unit, digits = 0): string {
+  const t = digits ? n.toFixed(digits) : String(Math.round(n));
+  return `${t} ${unit}${t === '1' ? '' : 's'}`;
+}
+/** "12 minutes left", from whole minutes. */
+export const minutesLeftLabel = (min: number): string => `${units(min, 'minute')} left`;
+/** A jump in the player: "+10 seconds", "−1 minute" (whole minutes from 60 seconds on). */
+export function skipLabel(d: number): string {
+  const a = Math.abs(d);
+  return `${d > 0 ? '+' : '−'}${a >= 60 ? units(a / 60, 'minute') : units(a, 'second')}`;
+}
+/** A signed subtitle offset from milliseconds: "+0.3 seconds", "-1.2 seconds". */
+export const offsetLabel = (ms: number): string => `${ms >= 0 ? '+' : ''}${units(ms / 1000, 'second', 1)}`;
+/** How long the server has been up, from seconds: minutes in the first hour, then hours, days from two days on. */
+export function uptimeLabel(sec: number): string {
+  const m = Math.floor(Math.max(0, sec) / 60);
+  if (m < 60) return units(m, 'minute');
+  const h = Math.floor(m / 60);
+  return h < 48 ? units(h, 'hour') : units(Math.floor(h / 24), 'day');
+}
+/** Node's process.platform as people know it: "macOS", "Linux", "Windows"; anything else as it is. */
+export function osName(platform: string): string {
+  return ({ darwin: 'macOS', linux: 'Linux', win32: 'Windows', freebsd: 'FreeBSD' } as Record<string, string>)[platform] || platform;
+}
+/** "just now", "5 minutes ago", "1 hour ago", "3 days ago". `now` is there for tests. */
 export function relTime(ms: number, now = Date.now()): string {
   const m = Math.round((now - ms) / 60000);
   if (m < 2) return 'just now';
-  if (m < 60) return `${m} min ago`;
+  if (m < 60) return `${units(m, 'minute')} ago`;
   const h = Math.round(m / 60);
-  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
-  const d = Math.round(h / 24);
-  return `${d} day${d === 1 ? '' : 's'} ago`;
+  if (h < 24) return `${units(h, 'hour')} ago`;
+  return `${units(Math.round(h / 24), 'day')} ago`;
 }
 /**
  * "S2 E5" from a file name like Show.S02E05.1080p.mkv or Show 2x05.mkv, the way the rest of Kino labels

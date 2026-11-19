@@ -8,6 +8,8 @@ import { closePalette } from '../lib/overlays';
 import { restoreFocus, tabbables, tabWrap } from '../lib/focus';
 import { IconSearch, IconHome, IconFilm, IconLibrary, IconMagnet, IconGear, IconCast, IconStop, IconPlay, IconPause, IconVol, IconMute, IconSpeaker, IconTv, IconRefresh } from './Icons';
 import { byGroup } from '../lib/palette-order';
+import { minutesLeftLabel } from '../lib/format';
+import { modKey } from '../lib/keys';
 import { resumeUrl, minutesLeft } from './Card';
 import '../styles/command-palette.css';
 
@@ -146,7 +148,7 @@ export function CommandPalette() {
       if (!out.length) out.push({ id: `dev.${r.id}.open`, group: 'Cast', label: r.name, hint: 'Idle', icon: <Icon />, keywords: r.model, run: () => setStore({ ccOpen: true }) });
       return out;
     });
-    const resume: Cmd[] = cw.slice(0, 5).map((p) => { const left = minutesLeft(p); return { id: `cw.${p.videoId}`, group: 'Continue watching', label: p.name, hint: left ? `${left} min left` : '', icon: <IconPlay />, art: p.poster, keywords: 'resume continue', run: () => go(resumeUrl(p)) }; });
+    const resume: Cmd[] = cw.slice(0, 5).map((p) => { const left = minutesLeft(p); return { id: `cw.${p.videoId}`, group: 'Continue watching', label: p.name, hint: left ? minutesLeftLabel(left) : '', icon: <IconPlay />, art: p.poster, keywords: 'resume continue', run: () => go(resumeUrl(p)) }; });
     const found: Cmd[] = titles.map((m) => ({ id: `title.${m.type}.${m.id}`, group: 'Titles', label: m.name, hint: [m.type === 'series' ? 'Series' : 'Movie', m.year?.replace(/-$/, ''), m.imdbRating ? `★ ${m.imdbRating}` : ''].filter(Boolean).join(' · '), icon: <IconSearch />, art: m.poster, run: () => go(titleUrl(m.type, m.id)) }));
     return [...resume, ...found, ...nav, ...cast, ...devices];
   }, [receivers, cw, titles]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -225,7 +227,7 @@ export function CommandPalette() {
           <span><kbd>↵</kbd> open</span>
           <span><kbd>&gt;</kbd> commands</span>
           <span><kbd>@</kbd> cast</span>
-          <span className="pal-brand"><kbd>⌘</kbd><kbd>K</kbd></span>
+          <span className="pal-brand"><kbd>{modKey(navigator.userAgent)}</kbd><kbd>K</kbd></span>
         </div>
       </div>
     </div>

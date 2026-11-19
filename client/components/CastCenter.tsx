@@ -7,7 +7,7 @@ import { volumeUnknown } from '../lib/cast-volume';
 import { navigate, titleUrl, playUrl } from '../lib/router';
 import { handoffHere, sendToTv } from '../lib/cast-actions';
 import { castingEpisode, isMagnetId, metaIdOf, nowPlayingParams } from '../lib/handoff';
-import { fmtTime, relTime, langName } from '../lib/format';
+import { fmtTime, relTime, langName, units, skipLabel } from '../lib/format';
 import { IconLibrary, IconNext, IconPlay, IconPause, IconStop, IconVol, IconMute, IconSpeaker, IconTv, IconX, IconRefresh, IconBack, IconPhone, IconLock, IconBack10, IconFwd10, IconLayers, IconMoon, IconPower } from './Icons';
 import { toggleLockRemote, lockRemoteSupported } from './LockRemote';
 import { splitShowName } from './home-data';
@@ -371,7 +371,7 @@ function Detail({ r, from, leaving, sheet, onSheet, onClose, onCmd }: { r: Recei
   // ---- keyboard: the player's keys, aimed at the TV. Every action flashes what it did and which key does it. ----
   const { hud, flash } = useHud();
   const playPauseH = () => { if (!m) return; flash(m.state === 'PLAYING' ? 'Pause' : 'Play', 'K'); void run(m.state === 'PLAYING' ? 'pause' : 'play'); };
-  const skipH = (d: number, key?: string) => { if (!m || !dur) return; flash(`${d > 0 ? '+' : '−'}${Math.abs(d) >= 60 ? `${Math.abs(d) / 60} min` : `${Math.abs(d)} s`}`, key); skip(d); };
+  const skipH = (d: number, key?: string) => { if (!m || !dur) return; flash(skipLabel(d), key); skip(d); };
   const volH = (d: number, key?: string) => { if (!r.online || volumeUnknown(r)) return; const v = Math.round(Math.min(1, Math.max(0, r.volume + d)) * 20) / 20; flash(`Volume ${Math.round(v * 100)}%`, key); void onCmd(r.id, 'volume', { level: v, muted: false }); };
   const muteH = () => { if (volumeUnknown(r)) return; flash(r.muted ? 'Sound on' : 'Muted', 'M'); void onCmd(r.id, 'volume', { muted: !r.muted }); };
   const jumpH = (tenth: number) => { if (!dur) return; flash(tenth ? `${tenth * 10}%` : 'Start', String(tenth)); void seekTo(dur * tenth / 10); };
@@ -429,9 +429,9 @@ function Detail({ r, from, leaving, sheet, onSheet, onClose, onCmd }: { r: Recei
       </div>
       <Scrubber r={r} onCmd={onCmd} at={mine ? pos : undefined} dur={mine ? dur : undefined} onSeek={mine ? (t) => { introLearn.onJump(pos, t); void seekTo(t); } : undefined} />
       <div className="cc-transport">
-        <button className="cc-skip" disabled={busy || !m || !dur} aria-label="Back 10 seconds" data-hint="Back 10 s" data-key="J" onClick={() => skipH(-10, 'J')}><IconBack10 size={28} /></button>
+        <button className="cc-skip" disabled={busy || !m || !dur} aria-label="Back 10 seconds" data-hint="Back 10 seconds" data-key="J" onClick={() => skipH(-10, 'J')}><IconBack10 size={28} /></button>
         <button className="cc-play" disabled={busy || !m} aria-label={m?.state === 'PLAYING' ? 'Pause' : 'Play'} data-hint={m?.state === 'PLAYING' ? 'Pause' : 'Play'} data-key="K" onClick={playPauseH}>{m?.state === 'PLAYING' ? <IconPause size={30} /> : <IconPlay size={30} />}</button>
-        <button className="cc-skip" disabled={busy || !m || !dur} aria-label="Forward 10 seconds" data-hint="Forward 10 s" data-key="L" onClick={() => skipH(10, 'L')}><IconFwd10 size={28} /></button>
+        <button className="cc-skip" disabled={busy || !m || !dur} aria-label="Forward 10 seconds" data-hint="Forward 10 seconds" data-key="L" onClick={() => skipH(10, 'L')}><IconFwd10 size={28} /></button>
       </div>
       {volumeUnknown(r) ? null : <VolumeBar r={r} onCmd={onCmd} />}
       <div className="cc-actions">
@@ -464,9 +464,9 @@ function Detail({ r, from, leaving, sheet, onSheet, onClose, onCmd }: { r: Recei
           {cast.activeSubId ? (
             <div className="cc-sync">
               <span>Sync</span>
-              <button className="cc-mini" disabled={busy} aria-label="Subtitles 0.1 s earlier" onClick={() => sub(cast.activeSubId || null, (cast.subOffsetMs || 0) - 100)}>−</button>
-              <b>{((cast.subOffsetMs || 0) / 1000).toFixed(1)} s</b>
-              <button className="cc-mini" disabled={busy} aria-label="Subtitles 0.1 s later" onClick={() => sub(cast.activeSubId || null, (cast.subOffsetMs || 0) + 100)}>+</button>
+              <button className="cc-mini" disabled={busy} aria-label="Subtitles 0.1 seconds earlier" onClick={() => sub(cast.activeSubId || null, (cast.subOffsetMs || 0) - 100)}>−</button>
+              <b>{units((cast.subOffsetMs || 0) / 1000, 'second', 1)}</b>
+              <button className="cc-mini" disabled={busy} aria-label="Subtitles 0.1 seconds later" onClick={() => sub(cast.activeSubId || null, (cast.subOffsetMs || 0) + 100)}>+</button>
             </div>
           ) : null}
         </div>
@@ -491,7 +491,7 @@ function Detail({ r, from, leaving, sheet, onSheet, onClose, onCmd }: { r: Recei
       {!isTouch && m ? (
         <div className="cc-keys" aria-hidden="true">
           <span><Keycap k="Space" /> Play</span>
-          <span><Keycap k="←" /><Keycap k="→" /> 10 s</span>
+          <span><Keycap k="←" /><Keycap k="→" /> 10 seconds</span>
           <span><Keycap k="↑" /><Keycap k="↓" /> Volume</span>
           {mine && isSeries ? <span><Keycap k="N" /> Next</span> : null}
           {canSwitch ? <span><Keycap k="S" /> Source</span> : null}
