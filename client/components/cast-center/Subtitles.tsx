@@ -25,9 +25,9 @@ export function Subtitles({ show, cast, busy, sub }: { show: boolean; cast: Cast
       {cast.activeSubId ? (
         <div className="cc-sync">
           <span>Sync</span>
-          <button className="cc-mini" disabled={busy} aria-label="Subtitles 0.1 seconds earlier" onClick={() => sub(cast.activeSubId || null, (cast.subOffsetMs || 0) - 100)}>−</button>
+          <button className="cc-mini" disabled={busy} aria-label="Subtitles 0.1 seconds earlier" data-hint="Subtitles 0.1 seconds earlier" onClick={() => sub(cast.activeSubId || null, (cast.subOffsetMs || 0) - 100)}>−</button>
           <b>{units((cast.subOffsetMs || 0) / 1000, 'second', 1)}</b>
-          <button className="cc-mini" disabled={busy} aria-label="Subtitles 0.1 seconds later" onClick={() => sub(cast.activeSubId || null, (cast.subOffsetMs || 0) + 100)}>+</button>
+          <button className="cc-mini" disabled={busy} aria-label="Subtitles 0.1 seconds later" data-hint="Subtitles 0.1 seconds later" onClick={() => sub(cast.activeSubId || null, (cast.subOffsetMs || 0) + 100)}>+</button>
         </div>
       ) : null}
     </div>

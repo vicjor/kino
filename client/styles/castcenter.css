@@ -201,7 +201,7 @@
 .cc-chip:not(:disabled):active { transform: scale(.94); }
 .cc-chip.on { background: var(--accent); color: var(--accent-ink); }
 .cc-sync { display: flex; align-items: center; gap: 10px; padding-top: 10px; color: var(--muted); font-size: 13px; }
-.cc-sync b { min-width: 46px; text-align: center; color: var(--text); font-variant-numeric: tabular-nums; }
+.cc-sync b { min-width: 46px; text-align: center; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* The artwork also paints the controller, blurred, like the hero on the front page */
 .cc-detail > * { position: relative; z-index: 1; }

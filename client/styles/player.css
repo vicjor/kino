@@ -195,7 +195,7 @@
 .sub-tools { display: flex; flex-direction: column; gap: 8px; padding-bottom: 10px; }
 .sub-tool { display: flex; align-items: center; gap: 10px; }
 .sub-tool span { color: var(--muted); font-size: 13px; width: 44px; }
-.sub-tool strong { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+.sub-tool strong { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sub-group h3 { font-size: 13px; color: var(--muted); font-weight: 600; padding: 12px 0 2px; }
 
 .spinner.sm { width: 16px; height: 16px; border-width: 2px; display: inline-block; vertical-align: middle; }
