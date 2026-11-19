@@ -1,8 +1,8 @@
 # Security advisories
 
-Every advisory `bun audit` reports for `bun.lock`, with whether Kino can reach it and what was decided. Reviewed 2026-10-24 with bun 1.4.2.
+Every advisory `bun audit` reports for `bun.lock`, with whether Kino can reach it and what was decided. Reviewed 2026-11-19 with bun 1.4.2.
 
-`scripts/audit-gate.ts` runs `bun audit --json` in CI and fails on any advisory without a row here whose Decision starts with **Accepted**. A row marked Fixed that bun reports again fails too. One row per package and advisory: `bun audit` counts an advisory once per vulnerable range, so its total is higher (24 before the build-only fixes below, 14 after).
+`scripts/audit-gate.ts` runs `bun audit --json` in CI and fails on any advisory without a row here whose Decision starts with **Accepted**. A row marked Fixed that bun reports again fails too. One row per package and advisory: `bun audit` counts an advisory once per vulnerable range, so its total is higher (24 before the build-only fixes below, 14 after, 12 after the 2026-11-19 bumps).
 
 ## Reviewing a new one
 
@@ -15,7 +15,7 @@ Every advisory `bun audit` reports for `bun.lock`, with whether Kino can reach i
 
 | Package | Advisory | Severity | Path | Reachable in Kino | Decision |
 |---|---|---|---|---|---|
-| `protobufjs` 6.11.6 | [GHSA-xq3m-2v4x-88gg](https://github.com/advisories/GHSA-xq3m-2v4x-88gg): code execution from a crafted schema or JSON descriptor | critical | `castv2-client > castv2 > protobufjs` | No. castv2 loads only the `cast_channel.proto` it ships; no schema or descriptor ever comes from a device, an addon or a user. | **Accepted**: trusted schema only. Fix with protobufjs 7 (follow-ups). |
+| `protobufjs` 6.11.6 | [GHSA-xq3m-2v4x-88gg](https://github.com/advisories/GHSA-xq3m-2v4x-88gg): code execution from a crafted schema or JSON descriptor | critical | `castv2-client > castv2 > protobufjs` | No. castv2 loads only the `cast_channel.proto` it ships; no schema or descriptor ever comes from a device, an addon or a user. | **Fixed**: the advisory now lists 6.11.6 as the patched 6.x release, which Kino already has (2026-11-19). |
 | `protobufjs` 6.11.6 | [GHSA-66ff-xgx4-vchm](https://github.com/advisories/GHSA-66ff-xgx4-vchm): code injection through `bytes` defaults in generated `toObject` | high | `castv2-client > castv2 > protobufjs` | No. Needs an attacker's schema, and castv2 never calls `toObject`. | **Accepted**: trusted schema only. |
 | `protobufjs` 6.11.6 | [GHSA-75px-5xx7-5xc7](https://github.com/advisories/GHSA-75px-5xx7-5xc7): code generation gadget after prototype pollution | high | `castv2-client > castv2 > protobufjs` | No. Needs a separate way to pollute `Object.prototype` first; none is known in Kino (request bodies go through `JSON.parse`, which cannot). | **Accepted**: no pollution primitive. |
 | `protobufjs` 6.11.6 | [GHSA-jvwf-75h9-cwgg](https://github.com/advisories/GHSA-jvwf-75h9-cwgg): process-wide denial of service through unsafe option paths in a schema | high | `castv2-client > castv2 > protobufjs` | No. Needs an attacker's schema. | **Accepted**: trusted schema only. |
@@ -32,6 +32,7 @@ Every advisory `bun audit` reports for `bun.lock`, with whether Kino can reach i
 | `proxy-addr` 2.0.7 | [GHSA-jqcg-44mw-7w3h](https://github.com/advisories/GHSA-jqcg-44mw-7w3h): IP spoofing through an IPv4-mapped IPv6 trusted subnet | critical | `express > proxy-addr` | No. `server/index.ts` sets `trust proxy` to false, so Express never trusts a forwarded address. | **Fixed**: lockfile bump to 2.0.8 (2026-10-24). |
 | `body-parser` 2.3.0 | [GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828): denial of service through trailing bytes after a compressed request body | high | `express > body-parser` | Yes, from the LAN: `express.json` reads every `/api` body. | **Fixed**: lockfile bump to 2.4.0 (2026-10-24). |
 | `ip-address` 10.7.0 | [GHSA-rxp7-6hxx-x8q5](https://github.com/advisories/GHSA-rxp7-6hxx-x8q5): an IPv6 zone identifier matched in quadratic time | moderate | `bittorrent-tracker > socks > ip-address`, `webtorrent > load-ip-set > ip-set > ip-address` | No. Same two code paths as the rows above, and neither runs. | **Fixed**: lockfile bump to 10.7.4 (2026-10-24). |
+| `qs` 6.16.0 | [GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw): `stringify` with `arrayFormat: 'comma'` throws on an element with a non-callable `toString` | moderate | `express > qs` | No. Express only parses query strings with qs, and only with the `extended` query parser, which Kino does not set; nothing calls `qs.stringify`. | **Fixed**: lockfile bump to 6.16.1 (2026-11-19). |
 
 ## Build only (electron-builder, DMG packaging)
 
@@ -43,6 +44,7 @@ These run only when the desktop DMG is packaged on the owner's Mac, on patterns 
 | `brace-expansion` 1.1.18, 2.1.4, 5.0.9 | [GHSA-6j4f-fj2g-mc7p](https://github.com/advisories/GHSA-6j4f-fj2g-mc7p): denial of service through recursion in `parseCommaParts` | high | as above | No. Same. | **Fixed**: same bump. |
 | `brace-expansion` 1.1.18, 2.1.4, 5.0.9 | [GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr): quadratic-time expansion of `{a},b}` | moderate | as above | No. Same. | **Fixed**: same bump. |
 | `fast-uri` 3.1.7 | [GHSA-hrr3-gc8f-f4qj](https://github.com/advisories/GHSA-hrr3-gc8f-f4qj): inconsistent host case normalization | moderate | `electron-builder > app-builder-lib > ajv > fast-uri` | No. ajv only validates electron-builder's own config. | **Fixed**: lockfile bump to 3.1.8 (2026-10-01). |
+| `minimatch` 9.0.9, 10.2.6 | [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249): denial of service through glob part amplification from a crafted pattern | moderate | `electron-builder > app-builder-lib > minimatch`, `app-builder-lib > @electron/universal > minimatch` | No. Only electron-builder's file globs, from `package.json`. | **Accepted**: build only, trusted patterns. The fix is minimatch 11, outside both dependents' ranges. |
 
 ## Desktop app and development
 
@@ -59,6 +61,7 @@ Electron ships inside Kino.app. The rest runs only while developing, building or
 | `vite` 6.4.3 | [GHSA-698v-4r3x-3vcv](https://github.com/advisories/GHSA-698v-4r3x-3vcv): launch-editor: `%` not escaped on Windows | moderate | `vite` (dev server and build) | No. Only the dev server on this machine; production serves the built files. | **Fixed**: lockfile bump to 6.4.4 (2026-10-24). |
 | `vite` 6.4.3 | [GHSA-r825-w8mm-5pxw](https://github.com/advisories/GHSA-r825-w8mm-5pxw): launch-editor: editor flag misread as a command | moderate | `vite` (dev server and build) | No. Only the dev server on this machine; production serves the built files. | **Fixed**: lockfile bump to 6.4.4 (2026-10-24). |
 | `vite` 6.4.3 | [GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm): launch-editor: existence check bypassed on Windows | high | `vite` (dev server and build) | No. Only the dev server on this machine; production serves the built files. | **Fixed**: lockfile bump to 6.4.4 (2026-10-24). |
+| `vite` 6.4.4 | [GHSA-8g5g-mxqh-grgj](https://github.com/advisories/GHSA-8g5g-mxqh-grgj): `server.fs.deny` bypassed with a query string | moderate | `vite` (dev server and build) | No. Only the dev server on this machine; production serves the built files. | **Fixed**: lockfile bump to 6.4.5 (2026-11-19). |
 | `source-map-js` 1.2.1 | [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q): event-loop denial of service through indexed source map offsets | high | `vite > postcss > source-map-js` | No. Build only, on this repo's own CSS. | **Fixed**: lockfile bump to 1.2.2 (2026-10-24). |
 | `undici` 7.29.1, 6.28.1 | [GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c): denial of service through too many content encodings | high | `electron > @electron/get > undici`, `node-gyp > undici` | No. Downloads Electron and build headers at install time only. | **Fixed**: lockfile bump to 7.30.1 and 6.29.1 (2026-10-24). |
 | `undici` 7.29.1, 6.28.1 | [GHSA-4qv8-2p9j-2685](https://github.com/advisories/GHSA-4qv8-2p9j-2685): unbounded memory in the EventSource parser | moderate | `electron > @electron/get > undici`, `node-gyp > undici` | No. Downloads Electron and build headers at install time only. | **Fixed**: lockfile bump to 7.30.1 and 6.29.1 (2026-10-24). |
@@ -72,5 +75,5 @@ Electron ships inside Kino.app. The rest runs only while developing, building or
 
 ## Follow-ups
 
-- **protobufjs 7 for castv2.** castv2 0.1.10 pins `protobufjs ^6.8.8`, so every protobufjs row needs a major bump that only an `overrides` entry can force. castv2 uses only `load`, `lookupType`, `encode` and `decode`, which 7.x keeps. Override to `^7.6.3`, then cast to an older Chromecast and a Nest speaker before shipping. Clears all eleven protobufjs rows.
+- **protobufjs 7 for castv2.** castv2 0.1.10 pins `protobufjs ^6.8.8`, so every protobufjs row needs a major bump that only an `overrides` entry can force. castv2 uses only `load`, `lookupType`, `encode` and `decode`, which 7.x keeps. Override to `^7.6.3`, then cast to an older Chromecast and a Nest speaker before shipping. Clears the ten Accepted protobufjs rows.
 - **ip** has no fixed release. Nothing to do while Kino never runs bittorrent-tracker's server.
