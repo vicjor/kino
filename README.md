@@ -249,8 +249,11 @@ client/            Vite + React 19, hand-written CSS, PWA (no UI library)
   components/      Dock, Card, Row, SourceList, CastCenter, CastPicker, Controls, Scrubber, PlayOn (where it plays),
                    EpisodesShelf, Shortcuts, CommandPalette, ...
                    plus pure helpers with tests: home-data, moods, source-tags
+  components/cast-center/  the Cast Center's parts: device grid and tiles, the zooming controller (Detail),
+                   volume and seek bars, power button, subtitles, history, controller keys
   lib/             api, store, sse, router, player-caps, hls-attach, vtt, intro, progress, format, plus urls (route
                    builders, no DOM), episodes, tvs, keys (g chords), cast-actions (send to TV, play here), cast-volume,
+                   cast-keys (the TV's keys, for the Cast Center and CastHotkeys),
                    spring (damping and response springs, momentum projection), paging, zoom (poster to title), tilt, years,
                    scrub (iOS scrubbing speeds), devices ("This iPhone")
   styles/          one CSS file per screen or component

@@ -6,6 +6,7 @@ import { tvVolume, stepVolume, setTvVolume, type VolumeChange } from '../lib/cas
 import { handoffHere } from '../lib/cast-actions';
 import { isTouch } from '../lib/player-caps';
 import { chordPending } from '../lib/keys';
+import { castKeyAction, type CastKey } from '../lib/cast-keys';
 import { langName, skipLabel } from '../lib/format';
 import { Hud, useHud } from './Hud';
 import { CastShortcutsSheet } from './LazyOverlays';
@@ -53,23 +54,26 @@ export function CastHotkeys() {
       const s = getStore();
       if (anySheetOpen() || s.ccOpen || s.palOpen) return;   // a sheet, the Cast Center or the palette owns the keys
       if (chordPending(e)) return;   // "g h", "g l", "g m" are the palette's, not the TV's
-      const k = e.key; const stop = () => e.preventDefault();
-      if (k === ' ' || k === 'k' || k === 'K') { flash(playing ? 'Pause' : 'Play', 'K'); void apply(() => (playing ? api.castPause() : api.castResume())); stop(); }
-      else if (k === 'ArrowLeft') { skip(e.shiftKey ? -60 : -10, e.shiftKey ? '⇧ ←' : '←'); stop(); }
-      else if (k === 'ArrowRight') { skip(e.shiftKey ? 60 : 10, e.shiftKey ? '⇧ →' : '→'); stop(); }
-      else if (k === 'j' || k === 'J') { skip(-10, 'J'); stop(); }
-      else if (k === 'l' || k === 'L') { skip(10, 'L'); stop(); }
-      else if (/^[0-9]$/.test(k)) { if (dur) { const n = Number(k); flash(n ? `${n * 10}%` : 'Start', k); void seekTo(dur * n / 10); } stop(); }
-      else if (k === 'ArrowUp') { vol(0.05, '↑'); stop(); }
-      else if (k === 'ArrowDown') { vol(-0.05, '↓'); stop(); }
-      else if (k === 'm' || k === 'M') { mute(); stop(); }
-      else if (k === 'n' || k === 'N') { if (isSeries) { flash('Next episode', 'N'); void apply(() => api.castNext()); } else flash('No next episode', 'N'); stop(); }
-      else if (k === 'v' || k === 'V') { subs(); stop(); }
-      else if (k === 'e' || k === 'E') { if (isSeries) { flash(cast.stopAfter ? 'Auto-next on' : 'Stopping after this episode', 'E'); void apply(() => api.castUpNext(!cast.stopAfter)); } stop(); }
-      else if (k === 'x' || k === 'X') { flash('Stopped', 'X'); void apply(() => api.castStop()); stop(); }
-      else if (k === 'h' || k === 'H') { here(); stop(); }
-      else if ((k === 's' || k === 'S') && cast.deviceId) { openDeviceController(cast.deviceId); stop(); }
-      else if (k === '?') { setKeys(true); stop(); }
+      const a = castKeyAction(e);
+      if (a && run(a) !== false) e.preventDefault();
+    };
+    // false: not a key here right now, so the press is left alone.
+    const run = (a: CastKey): boolean | void => {
+      switch (a.do) {
+        case 'play-pause': flash(playing ? 'Pause' : 'Play', 'K'); void apply(() => (playing ? api.castPause() : api.castResume())); return;
+        case 'skip': skip(a.by, a.key); return;
+        case 'jump': if (dur) { flash(a.tenth ? `${a.tenth * 10}%` : 'Start', String(a.tenth)); void seekTo(dur * a.tenth / 10); } return;
+        case 'volume': vol(a.by, a.key); return;
+        case 'mute': mute(); return;
+        case 'next': if (isSeries) { flash('Next episode', 'N'); void apply(() => api.castNext()); } else flash('No next episode', 'N'); return;
+        case 'subs': subs(); return;
+        case 'stop-after': if (isSeries) { flash(cast.stopAfter ? 'Auto-next on' : 'Stopping after this episode', 'E'); void apply(() => api.castUpNext(!cast.stopAfter)); } return;
+        case 'stop': flash('Stopped', 'X'); void apply(() => api.castStop()); return;
+        case 'here': here(); return;
+        case 'source': if (!cast.deviceId) return false; openDeviceController(cast.deviceId); return;
+        case 'keys': setKeys(true); return;
+        case 'intro': return false;   // skip intro lives in the player and the controller, not here
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
