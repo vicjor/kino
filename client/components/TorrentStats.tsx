@@ -9,7 +9,7 @@ export function TorrentStats({ s }: { s: T | null }) {
     <div className="tstats" aria-live="polite">
       <span>{sharingNow(s.numPeers)}</span>
       <span>{fmtSpeed(s.downloadSpeed)}</span>
-      <span>{pct}% cached</span>
+      <span>{pct}% downloaded</span>
     </div>
   );
 }
