@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ErrorCode } from '../server/types.ts';
-import { codeWords, startWords, stoppedWords, toastWords, sharing, sharingNow, endedEarlyWords, endedEarlyDetail, waitWords, stallWords, slowWords, stutterWords, autoRetry, MEDIA } from '../client/lib/play-errors.ts';
+import { codeWords, startWords, stoppedWords, toastWords, sharing, sharingNow, endedEarlyWords, endedEarlyDetail, waitWords, stallWords, slowWords, stutterWords, autoRetry, transcodeFallback, MEDIA } from '../client/lib/play-errors.ts';
 
 // client/lib/play-errors.ts: the player's failure and stall copy, chosen by the server's code, in plain words.
 
@@ -115,4 +115,13 @@ test('none of the copy says ffmpeg, transcoder, peers, seeders, H.264, session, 
   for (const w of [...Object.values(MEDIA), stutterWords(true), stutterWords(false)]) all.push(...Object.values(w));
   for (const line of all) assert.doesNotMatch(line, JARGON, line);
   for (const line of all) assert.doesNotMatch(line, /\brelease|decod/i, line);
+});
+
+test('transcodeFallback: once, for a file played as is or copied that the browser could not make sense of', () => {
+  assert.equal(transcodeFallback('direct', true, false), true);
+  assert.equal(transcodeFallback('hls-copy', true, false), true);
+  assert.equal(transcodeFallback('hls-transcode', true, false), false, 'already converted: show the failure');
+  assert.equal(transcodeFallback('direct', true, true), false, 'one fallback per file');
+  assert.equal(transcodeFallback('direct', false, false), false, 'a network failure is not a format problem');
+  assert.equal(transcodeFallback(undefined, true, false), false, 'nothing playing yet');
 });

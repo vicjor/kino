@@ -108,6 +108,7 @@ export interface PlayRequest {
   videoId?: string;      // for progress bookkeeping
   audioTrack?: number;   // index into probe.audio
   forceHls?: boolean;
+  forceTranscode?: boolean;   // the player could not play the direct file or the copy: convert it (one fallback)
   caps?: { hevc?: boolean; mkv?: boolean; av1?: boolean };  // client-detected playback capabilities
 }
 

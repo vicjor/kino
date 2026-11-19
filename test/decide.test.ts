@@ -210,3 +210,11 @@ test('saferStep: a Chromecast that could not play a stream gets everything conve
   assert.equal(saferStep(hevc, false, true), 1, 'copied audio: convert it too');
   assert.equal(saferStep(decide(p({ container: 'mkv', video: { codec: 'hevc' }, audio: [{ index: 1, codec: 'eac3' }] }), 'chromecast'), false, true), 2);
 });
+
+test('transcode (the player fallback) converts everything, in the target\'s segments', () => {
+  const d = decide(p({}), 'browser', { transcode: true });
+  assert.deepEqual(d, { mode: 'hls-transcode', reason: 'the player could not play it as it is', videoCopy: false, audioCopy: false, segment: 'fmp4', audioIndex: 1 });
+  assert.equal(decide(p({ container: 'mp4', video: { codec: 'hevc' } }), 'ios', { transcode: true }).mode, 'hls-transcode');
+  assert.equal(decide(p({}), 'chromecast', { transcode: true }).segment, 'mpegts');
+  assert.equal(decide(p({ audio: [{ index: 1, codec: 'aac' }, { index: 2, codec: 'ac3' }] }), 'browser', { transcode: true, audioIndex: 2 }).audioIndex, 2, 'keeps the chosen track');
+});

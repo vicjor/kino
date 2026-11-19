@@ -22,7 +22,7 @@ import { CastPicker } from '../components/CastPicker';
 import { StallSheet } from '../components/StallSheet';
 import { sendToTv, type Tv } from '../lib/cast-actions';
 import { onSse } from '../lib/sse';
-import { startWords, stoppedWords, toastWords, endedEarlyWords, endedEarlyDetail, waitWords, stallWords, slowWords, stutterWords, autoRetry, MEDIA } from '../lib/play-errors';
+import { startWords, stoppedWords, toastWords, endedEarlyWords, endedEarlyDetail, waitWords, stallWords, slowWords, stutterWords, autoRetry, transcodeFallback, MEDIA } from '../lib/play-errors';
 import { SourcesSheet } from '../components/SourcesSheet';
 import { sortedEpisodes } from '../components/EpisodePicker';
 import { fmtTime, langName, audioDetail } from '../lib/format';
@@ -159,8 +159,22 @@ function LocalPlayer() {
   // wait for /health to answer again and pick up where we were, silently, twice.
   const autoRetries = useRef(0);
   const retryRef = useRef<() => void>(() => undefined);
+  // The file the browser could not play as is or copied: from then on the server converts it (once, play-errors.ts).
+  const fileKey = `${p.infoHash}:${p.fileIdx ?? -1}`;
+  const keyRef = useRef(fileKey); keyRef.current = fileKey;
+  const converted = useRef<string | null>(null);
+  const playRef = useRef(play); playRef.current = play;
   // `code` is the server's (ErrorCode): a full disk or a broken program is shown at once, no quiet retries.
-  const fail = useCallback((msg: string, info: { hint?: string; detail?: string; retry?: boolean; code?: string; lost?: boolean } = {}) => {
+  const fail = useCallback((msg: string, info: { hint?: string; detail?: string; retry?: boolean; code?: string; lost?: boolean; media?: boolean } = {}) => {
+    if (transcodeFallback(playRef.current?.mode, !!info.media, converted.current === keyRef.current)) {
+      console.info('[kino] could not play this, converting it instead', { mode: playRef.current?.mode, detail: info.detail });
+      converted.current = keyRef.current;
+      showNotice({ text: 'Converting this video for this browser…' }, 6000);
+      // From where it was; a file that never started (no metadata) resumes as on open.
+      const at = (videoRef.current?.currentTime || 0) + hlsOffsetRef.current;
+      retryFrom.current = at > 1 ? at : null; setErr(''); setErrInfo(null); setAttempt((n) => n + 1);
+      return;
+    }
     if (info.code === 'no-peers' || info.code === 'unreadable') outcomeRef.current(info.code);
     if (info.retry && autoRetry(info.code) && autoRetries.current < 2) {
       autoRetries.current++;
@@ -236,7 +250,7 @@ function LocalPlayer() {
     setStore({ lockRemote: null }); // local playback owns the media session now
     (async () => {
       try {
-        const resp = await api.play({ infoHash: p.infoHash, fileIdx: p.fileIdx, target: target(), videoId: p.videoId, caps: caps() });
+        const resp = await api.play({ infoHash: p.infoHash, fileIdx: p.fileIdx, target: target(), videoId: p.videoId, caps: caps(), forceTranscode: converted.current === fileKey || undefined });
         if (dead) return;
         setPlay(resp);
         sessionRef.current = resp.sessionId || null;
@@ -506,7 +520,7 @@ function LocalPlayer() {
     const onErr = () => {
       const e = v.error; if (!e || err || e.code === 1) return;
       const w = e.code === 2 ? MEDIA.lost : e.code === 3 ? MEDIA.broken : MEDIA.format;
-      fail(w.msg, { hint: w.hint, detail: e.message, retry: e.code === 2 });
+      fail(w.msg, { hint: w.hint, detail: e.message, retry: e.code === 2, media: e.code === 3 || e.code === 4 });
     };
     v.addEventListener('timeupdate', onProgressOk); v.addEventListener('timeupdate', upd); v.addEventListener('progress', upd); v.addEventListener('durationchange', upd);
     v.addEventListener('play', onPlay); v.addEventListener('playing', onPlay); v.addEventListener('pause', onPause);
@@ -703,7 +717,7 @@ function LocalPlayer() {
     const at = absTime();
     try {
       if (sessionRef.current) { void api.hlsClose(sessionRef.current); sessionRef.current = null; }
-      const resp = await api.play({ infoHash: p.infoHash, fileIdx: p.fileIdx, target: target(), videoId: p.videoId, caps: caps(), audioTrack: index });
+      const resp = await api.play({ infoHash: p.infoHash, fileIdx: p.fileIdx, target: target(), videoId: p.videoId, caps: caps(), audioTrack: index, forceTranscode: converted.current === fileKey || undefined });
       setPlay(resp);
       sessionRef.current = resp.sessionId || null;
       setBuffering(true);

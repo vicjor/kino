@@ -52,13 +52,13 @@ api.post('/play', async (req, res) => {
   try { p = await probe(key, local); }
   catch (e) { throw probeFailure(e); }   // a local ffprobe that cannot start is not a slow torrent
   const audioIndex = pickAudio(p, audioTrack, ['eng', ...getState().settings.subLangs]);
-  const d = decide(p, tg, { forceHls: body.forceHls, audioIndex, caps: body.caps, hdr: p.hdr });
+  const d = decide(p, tg, { forceHls: body.forceHls, transcode: body.forceTranscode === true, audioIndex, caps: body.caps, hdr: p.hdr });
   const out: PlayResponse = { mode: d.mode, url: `/api/file/${t.infoHash}/${idx}`, infoHash: t.infoHash, fileIdx: idx, fileName: f.name, sizeBytes: f.length, probe: p, audioIndex: d.audioIndex, reason: d.reason };
   if (d.mode !== 'direct') {
     const s = hls.start({ infoHash: t.infoHash, fileIdx: idx, sourceUrl: local, startOffset: 0, decision: d, probe: p, owner: clientKey(req) });
     out.url = `/api/hls/${s.id}/index.m3u8`; out.sessionId = s.id;
   }
-  log.info('play', { infoHash: t.infoHash, idx, file: f.name, target: tg, mode: d.mode, reason: d.reason });
+  log.info('play', { infoHash: t.infoHash, idx, file: f.name, target: tg, mode: d.mode, reason: d.reason, ...(body.forceTranscode === true ? { fallback: true } : {}) });
   res.json(out);
 });
 

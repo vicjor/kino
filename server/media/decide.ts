@@ -28,7 +28,8 @@ export function pickAudio(p: ProbeInfo, want?: number, langs: string[] = ['eng']
 }
 
 type Caps = NonNullable<PlayRequest['caps']>;
-type DecideOpts = { forceHls?: boolean; audioIndex?: number; caps?: Caps; hdr?: boolean };
+/** `transcode`: the player could not play the direct file or the copied stream (Player fallback), so convert everything. */
+type DecideOpts = { forceHls?: boolean; transcode?: boolean; audioIndex?: number; caps?: Caps; hdr?: boolean };
 
 /**
  * Video codecs besides H.264 that a target decodes, so they play as is or copy into HLS: HEVC on iOS always, HEVC and
@@ -89,11 +90,13 @@ export function decide(p: ProbeInfo, target: Target, opts: DecideOpts = {}): Dec
   const extra = copyableVideo(target, opts.caps);
   const hdr = !!opts.hdr;
 
+  const segment: Decision['segment'] = target === 'chromecast' ? 'mpegts' : 'fmp4';
+  if (opts.transcode) return { mode: 'hls-transcode', reason: 'the player could not play it as it is', videoCopy: false, audioCopy: false, segment, audioIndex };
+
   const reason = directBlocker(p, target, a, extra, opts);
   if (!reason) return { mode: 'direct', videoCopy: true, audioCopy: true, segment: 'fmp4', audioIndex };
 
   const videoCopy = !hdr && (v === 'h264' || extra.includes(v));
   const audioCopy = ac === 'aac' && !surroundOnChromecast(target, a);
-  const segment: Decision['segment'] = target === 'chromecast' ? 'mpegts' : 'fmp4';
   return { mode: videoCopy ? 'hls-copy' : 'hls-transcode', reason, videoCopy, audioCopy, segment, audioIndex };
 }

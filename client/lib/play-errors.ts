@@ -66,6 +66,14 @@ export const MEDIA = {
   other: { msg: 'Playback failed' },
 } satisfies Record<string, Words>;
 
+/**
+ * Whether a failure in the browser should quietly try once more with the server converting everything (forceTranscode)
+ * instead of showing it. Only for the browser not making sense of the video (`media`: MEDIA.broken or MEDIA.format), only
+ * when it got the file as is or a copy, and only once per file: a conversion that fails too is shown.
+ */
+export const transcodeFallback = (mode: PlayResponse['mode'] | undefined, media: boolean, tried: boolean): boolean =>
+  media && !tried && (mode === 'direct' || mode === 'hls-copy');
+
 /** "ended" well before the end: the download ran dry (direct play) or the conversion stopped. */
 export function endedEarlyWords(direct: boolean): Words {
   return {

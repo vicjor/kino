@@ -2,7 +2,8 @@ import type Hls from 'hls.js';
 import { isIOS, isSafari, canPlayNativeHls } from './player-caps';
 import { MEDIA, type Words } from './play-errors';
 
-interface FailInfo { hint?: string; detail?: string; retry?: boolean }
+/** `media`: the browser could not make sense of the video (the Player may fall back to a conversion). */
+interface FailInfo { hint?: string; detail?: string; retry?: boolean; media?: boolean }
 type OnFail = (msg: string, info: FailInfo) => void;
 /** Report a failure in the words from play-errors.ts. */
 const failWith = (onFail: OnFail, w: Words, detail: string | undefined, retry: boolean) => onFail(w.msg, { hint: w.hint, detail, retry });
@@ -55,7 +56,8 @@ function withHls(Hls: typeof import('hls.js').default, v: HTMLVideoElement, url:
         }
         h.startLoad();
       } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-        if (++mediaFails > 2) { failWith(o.onFail, MEDIA.broken, data.details, false); return; }
+        // No codec this browser takes: recovering cannot help, so say so at once.
+        if (++mediaFails > 2 || /IncompatibleCodecs|AddCodecError/.test(data.details)) { o.onFail(MEDIA.broken.msg, { hint: MEDIA.broken.hint, detail: data.details, retry: false, media: true }); return; }
         h.recoverMediaError();
       } else failWith(o.onFail, MEDIA.other, data.details, true);
     });
