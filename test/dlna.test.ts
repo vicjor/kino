@@ -606,23 +606,41 @@ test('a subtitle reload starts where the TV is now, not at the last poll', async
   assert.match(seek ?? '', /<Target>00:12:35<\/Target>/, 'the poll said 0:12:34, 1.5 s ago');
 });
 
-test('observe asks the TVs only while someone follows the event stream or Kino casts to a TV', async (t) => {
+test('observeDue: every tick while watched, else every 30 s', () => {
+  const at = 1_000_000;
+  assert.equal(d.observeDue(true, at, at + 1), true);
+  assert.equal(d.observeDue(false, at, at + 29_999), false);
+  assert.equal(d.observeDue(false, at, at + 30_000), true);
+  assert.equal(d.observeDue(false, 0, at), true, 'never asked yet');
+  assert.equal(d.observeDue(false, at, at - 1000), true, 'a clock step back does not stop it');
+});
+
+test('observe asks the TVs every tick while someone watches or Kino casts to a TV, else every 30 s', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() + 10 * HOUR });   // past any earlier test's last ask
   const [a, b] = [await fakeTv(), await fakeTv()];
   t.after(async () => { await stop(false); await a.close(); await b.close(); });
   fakeIo(t);
   let clients = 0;
   io.watchers = () => clients;
   await d.observe();
-  assert.deepEqual([a.calls, b.calls], [[], []], 'nobody watching: no SOAP calls');
-  clients = 1;
+  assert.ok(a.calls.includes('GetMediaInfo') && b.calls.includes('GetMediaInfo'), 'nobody watching: still asked, so a lost cast is taken back');
+  a.calls.length = 0; b.calls.length = 0;
+  t.mock.timers.tick(4000);
   await d.observe();
-  assert.ok(a.calls.includes('GetMediaInfo') && b.calls.includes('GetMediaInfo'), 'a phone on the event stream: both asked');
+  assert.deepEqual([a.calls, b.calls], [[], []], 'nobody watching: not again 4 s later');
+  t.mock.timers.tick(26_000);
+  await d.observe();
+  assert.ok(a.calls.includes('GetMediaInfo'), 'nobody watching: again after 30 s');
+  clients = 1;
+  a.calls.length = 0; b.calls.length = 0;
+  await d.observe();
+  assert.ok(a.calls.includes('GetMediaInfo') && b.calls.includes('GetMediaInfo'), 'a phone on the event stream: asked at once');
   assert.equal(receiverInfo(b.id)?.app?.name, 'Another app', 'what another app plays shows in the Cast Center');
   clients = 0;
   await castTo(film(a.id));
   b.calls.length = 0;
   await d.observe();
-  assert.ok(b.calls.includes('GetMediaInfo'), 'a cast of Kino\'s: the other TVs are still asked');
+  assert.ok(b.calls.includes('GetMediaInfo'), 'a cast of Kino\'s: the other TVs are asked every tick');
 });
 
 test('unwatched, a cast to a TV that went off since it was last asked checks it first, and wakes it', async (t) => {
@@ -672,7 +690,7 @@ test('a file of Kino\'s playing on a TV that Kino lost track of is taken back, w
   tv.playing.uri = `http://192.168.1.144:1234/api/file/${'a'.repeat(40)}/0`;
   io.watchers = () => 1;
   // Past the quiet time after Kino's own stops, this test's and those of tests before that stepped a mocked clock on.
-  t.mock.timers.enable({ apis: ['Date'], now: Date.now() + HOUR });
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() + 20 * HOUR });
   await d.observe();
   const s = status();
   assert.deepEqual([s.active, s.deviceId, s.title, s.currentTime, s.state], [true, tv.id, 'Asked title', 754, 'PLAYING']);

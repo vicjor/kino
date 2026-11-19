@@ -196,7 +196,7 @@ function wakeable(id: string): void {
  */
 async function awake(id: string, signal?: AbortSignal): Promise<Renderer | undefined> {
   const r = renderers.get(id);
-  // Unwatched, nothing has asked it lately (observe), so it is asked now whether it is still on.
+  // Unwatched, observe() asks only every 30 s and two misses count as off: up to a minute stale, so it is asked now.
   if (r && !asleep(id) && watched()) return r;
   if (r && !wakes.has(id)) { try { await soap(r.avControl, AV, 'GetTransportInfo', {}, 2500, signal); misses.delete(id); return r; } catch { /* off, wake it */ } }
   const k = known.get(id);
@@ -279,7 +279,7 @@ export const io = {
   wake: sendWake,
   /** Turn an LG TV off over its own remote protocol (lg.ts). */
   powerOff: lg.turnOff,
-  /** Phones and browsers following the event stream: observe() runs only while there is one, or a cast of Kino's. */
+  /** Phones and browsers following the event stream: observe() runs every 4 s while there is one or a cast of Kino's, else every 30 s. */
   watchers: clientCount,
   /** A pause, cut short when `signal` aborts. */
   wait: (ms: number, signal?: AbortSignal): Promise<void> => sleep(ms, undefined, { signal }).catch(() => undefined),
@@ -336,7 +336,7 @@ export function start(): void {
     timer = setInterval(() => { search(); for (const [id, r] of renderers) if (Date.now() - r.seenAt > 10 * 60_000 && cur?.dev.id !== id) { renderers.delete(id); log.info('renderer gone', { name: r.name }); } pruneKnown(); }, 60_000);
     timer.unref();
     setInterval(() => void observe(), 4000).unref();
-    onClientConnect(() => void observe());   // someone opened Kino: what the TVs do now, not when the last one left
+    onClientConnect(() => void observe());   // someone opened Kino: what the TVs do now, not up to 30 s ago
   } catch (e) { log.warn('ssdp unavailable', { err: errMsg(e) }); }
   // Second socket on the multicast group itself: a TV that turns on announces itself (NOTIFY ssdp:alive) without waiting to be asked.
   try {
@@ -474,11 +474,16 @@ function remember(key: string, a: Asked): void {
   saveAsked();
 }
 let observing = false;
-/**
- * Whether observe() asks the TVs: only while someone can see the Cast Center (a phone or browser on the event stream) or
- * Kino casts to a TV. Unwatched, `seen` and `misses` stand still until the next client connects, which asks at once.
- */
+/** Someone can see the Cast Center (a phone or browser on the event stream), or Kino casts to a TV. */
 const watched = (): boolean => !!cur || io.watchers() > 0;
+/** How often observe() asks the TVs while nobody watches: still often enough to take back a cast of Kino's it lost track of. */
+const UNWATCHED_EVERY = 30_000;
+/** When observe() last asked the TVs (ms). */
+let observedAt = 0;
+/** Whether observe() asks the TVs now: on every 4 s tick while watched, else once UNWATCHED_EVERY has passed since the last time. */
+function observeDue(isWatched: boolean, lastAt: number, now: number): boolean {
+  return isWatched || now - lastAt >= UNWATCHED_EVERY || now < lastAt;
+}
 /** No taking back while Kino itself is starting or stopping something: the TV still shows the old file for a moment. */
 let quietUntil = 0;
 const hush = (ms = 15_000) => { quietUntil = Math.max(quietUntil, Date.now() + ms); };
@@ -507,8 +512,9 @@ async function ask(r: Renderer): Promise<Seen> {
 }
 
 async function observe(): Promise<void> {
-  if (observing || !watched()) return;
+  if (observing || !observeDue(watched(), observedAt, Date.now())) return;
   observing = true;
+  observedAt = Date.now();
   try {
     await Promise.all([...renderers.values()].filter((r) => cur?.dev.id !== r.id).map(async (r) => {
       let next: Seen;
@@ -782,7 +788,7 @@ export async function stop(haNotify = true, reason = 'stopped'): Promise<void> {
   try { await soap(c.dev.avControl, AV, 'Stop', {}, 5000); } catch { /* gone */ }
   publish();
 }
-export const _internal = { hms, secs, tag, esc, describe, renderers, known, asked, freshAsked, loadAsked, freshKnown, loadKnown, pruneKnown, know, KNOWN_TTL, observe, positionNow };
+export const _internal = { hms, secs, tag, esc, describe, renderers, known, asked, freshAsked, loadAsked, freshKnown, loadKnown, pruneKnown, know, KNOWN_TTL, observe, observeDue, positionNow };
 export function handoffInfo(): CastHandoff | null {
   return cur ? { videoId: cur.req.videoId, pos: cur.pos, infoHash: cur.infoHash, fileIdx: cur.fileIdx, title: cur.req.title, poster: cur.req.poster } : null;
 }
