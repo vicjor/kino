@@ -12,8 +12,6 @@ import { Detail } from './cast-center/Detail';
 import { ZOOM_MS, ZOOM_OUT_MS, type CmdFn, type SheetKind } from './cast-center/shared';
 import '../styles/castcenter.css';
 
-export function openCastCenter(): void { setStore({ ccOpen: true, ccOrigin: null }); }
-
 /** Open the Cast Center already zoomed into one device's controller, growing out of `from` (a bar, a widget). */
 let pendingDetail: { id: string; from: DOMRect } | null = null;
 export function openDeviceController(id: string, from?: DOMRect | null): void {
