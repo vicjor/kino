@@ -170,18 +170,13 @@ const recheckBin: Recheck = async (name, env, before) => {
 const picks = pickCache(lookupBin, recheckBin);
 const resolveBin = (name: BinName, env: string | undefined) => picks.get(name, env);
 /** A spawn of `name` (from `path`, when known) failed to start: look for another binary in the background, at most once a minute. */
-export function binFailed(name: BinName, path?: string): void { picks.failed(name, path); }
+function binFailed(name: BinName, path?: string): void { picks.failed(name, path); }
 /** Resolves once every binary re-check in flight has finished. */
 export function binChecks(): Promise<void> { return picks.settled(); }
 
-/** The ffmpeg in use, as a live binding: modules that import it see the resolved path once anything has asked (the boot log does). */
-export let FFMPEG = binOverride('ffmpeg') || bundled('ffmpeg');
-
 /** The binary to spawn. An override is read at call time and used as given (tests point it at fakes); binStatus checks it. With nothing runnable it is the bundled one, so the spawn fails with the real reason. */
 export function binPath(name: BinName): string {
-  const p = binOverride(name) || resolveBin(name, undefined)?.path || bundled(name);
-  if (name === 'ffmpeg') FFMPEG = p;
-  return p;
+  return binOverride(name) || resolveBin(name, undefined)?.path || bundled(name);
 }
 
 /**

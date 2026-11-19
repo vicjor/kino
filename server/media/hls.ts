@@ -15,8 +15,8 @@ import type { ErrorCode } from '../types.js';
 const log = logger('hls');
 /** The ffmpeg binary: FFMPEG_BIN read at call time (a test points it elsewhere after import), else the first one that runs. */
 function ffmpegBin(): string { return binPath('ffmpeg'); }
-/** FFMPEG is a live binding for modules that read it at call time (subtitle extraction, sync); binStatus is for /health and the boot log. */
-export { FFMPEG, binStatus } from './bins.js';
+/** For /health and the boot log. */
+export { binStatus } from './bins.js';
 
 // Hardware H.264 encode via VideoToolbox on Apple Silicon/Intel Macs keeps the
 // fans quiet: transcodes run on the media engine, not the CPU cores.

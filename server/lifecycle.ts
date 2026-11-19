@@ -95,7 +95,7 @@ export interface ShutdownSteps {
 }
 
 /** totalMs stays under the 5 s exit deadline of the signal handler, so the last flush always runs. */
-export const SHUTDOWN_BUDGET = { castMs: 2000, totalMs: 4300 };
+const SHUTDOWN_BUDGET = { castMs: 2000, totalMs: 4300 };
 
 /** Run fn, waiting at most ms for it. Never throws: a failure or a timeout is logged and the shutdown goes on. */
 export async function bounded(name: string, fn: () => Promise<unknown>, ms: number): Promise<void> {
