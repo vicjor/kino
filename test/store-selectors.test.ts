@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import ts from '@typescript/typescript6';
 
 /**
  * A store selector must hand back something already in the store (or a primitive). A fresh [] or {} is a new
