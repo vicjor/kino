@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-const { av1Playable, decodeQuery } = await import('../client/lib/player-caps.ts');
+const { av1Playable, vp9Copyable, decodeQuery } = await import('../client/lib/player-caps.ts');
 
 test('av1Playable: AV1 in MP4 or WebM counts, other codecs do not', () => {
   const asked: string[] = [];
@@ -16,4 +16,11 @@ test('decodeQuery: the codecs a browser decodes, as the streams route reads them
   assert.equal(decodeQuery({ hevc: true, av1: false }), '&hevc=1');
   assert.equal(decodeQuery({ av1: true }), '&av1=1');
   assert.equal(decodeQuery({ hevc: false, av1: false }), '');
+});
+
+test('vp9Copyable: asks MSE for VP9 in MP4 (what hls.js plays the copy as), nothing else', () => {
+  const asked: string[] = [];
+  assert.equal(vp9Copyable((m) => { asked.push(m); return false; }), false);
+  assert.deepEqual(asked, ['video/mp4; codecs="vp09.00.10.08"']);
+  assert.equal(vp9Copyable((m) => m.includes('vp09')), true);
 });

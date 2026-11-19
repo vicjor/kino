@@ -218,3 +218,19 @@ test('transcode (the player fallback) converts everything, in the target\'s segm
   assert.equal(decide(p({}), 'chromecast', { transcode: true }).segment, 'mpegts');
   assert.equal(decide(p({ audio: [{ index: 1, codec: 'aac' }, { index: 2, codec: 'ac3' }] }), 'browser', { transcode: true, audioIndex: 2 }).audioIndex, 2, 'keeps the chosen track');
 });
+
+test('browser vp9: copied into fMP4 for hls.js only with caps.vp9, never on iOS or the Chromecast', () => {
+  const avi = p({ container: 'avi', video: { codec: 'vp9' }, audio: [{ index: 1, codec: 'opus' }] });
+  const no = decide(avi, 'browser');
+  assert.equal(no.mode, 'hls-transcode'); assert.equal(no.videoCopy, false);
+  assert.equal(decide(avi, 'browser', { caps: { vp9: false } }).mode, 'hls-transcode');
+  const cap = decide(avi, 'browser', { caps: { vp9: true } });
+  assert.deepEqual(cap, { mode: 'hls-copy', reason: 'avi container not supported on browser', videoCopy: true, audioCopy: false, segment: 'fmp4', audioIndex: 1 });
+  // Firefox: no Matroska, so a VP9 mkv is copied instead of converted.
+  assert.equal(decide(p({ video: { codec: 'vp9' } }), 'browser', { caps: { vp9: true, mkv: false } }).mode, 'hls-copy');
+  assert.equal(decide(p({ video: { codec: 'vp9' } }), 'browser', { caps: { vp9: true } }).mode, 'direct', 'Chrome still plays it as is');
+  assert.equal(decide(avi, 'ios', { caps: { vp9: true } }).mode, 'hls-transcode', 'native HLS on Safari/iOS: never a VP9 copy');
+  assert.equal(decide(avi, 'chromecast', { caps: { vp9: true } }).mode, 'hls-transcode');
+  assert.equal(decide(avi, 'browser', { caps: { vp9: true }, hdr: true }).mode, 'hls-transcode', 'HDR still tone-maps');
+  assert.equal(decide(avi, 'browser', { caps: { vp9: true }, transcode: true }).mode, 'hls-transcode', 'the player fallback wins');
+});

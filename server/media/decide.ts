@@ -32,13 +32,14 @@ type Caps = NonNullable<PlayRequest['caps']>;
 type DecideOpts = { forceHls?: boolean; transcode?: boolean; audioIndex?: number; caps?: Caps; hdr?: boolean };
 
 /**
- * Video codecs besides H.264 that a target decodes, so they play as is or copy into HLS: HEVC on iOS always, HEVC and
- * AV1 in the browser only when the client says so (hls.js copies them into fMP4). iOS ignores caps.av1: its native HLS is
- * untested with AV1. The old Chromecast decodes nothing else.
+ * Video codecs besides H.264 that a target decodes, so they play as is or copy into HLS: HEVC on iOS always, HEVC, AV1
+ * and VP9 in the browser only when the client says so (hls.js copies them into fMP4; caps.vp9 is VP9 in fMP4 through
+ * MSE). iOS ignores caps.av1 and caps.vp9: its native HLS is untested with them. The old Chromecast decodes nothing else
+ * (a DLNA TV pulls the raw file and never comes here).
  */
 function copyableVideo(target: Target, caps: Caps = {}): string[] {
   if (target === 'ios') return ['hevc'];
-  if (target === 'browser') return [...(caps.hevc ? ['hevc'] : []), ...(caps.av1 ? ['av1'] : [])];
+  if (target === 'browser') return [...(caps.hevc ? ['hevc'] : []), ...(caps.av1 ? ['av1'] : []), ...(caps.vp9 ? ['vp9'] : [])];
   return [];
 }
 
