@@ -102,6 +102,8 @@ async function fakeTv() {
     waiting: (action: string) => held.get(action)?.length || 0,
     off: () => { power = false; d.renderers.delete(`dlna:${id}`); d.known.get(`dlna:${id}`)!.mac = '02:00:00:00:00:01'; },
     on: () => { power = true; },
+    /** Off without Kino noticing: still in what SSDP found, no missed polls counted. */
+    sleep: () => { power = false; },
     close: () => { d.renderers.delete(`dlna:${id}`); d.known.delete(`dlna:${id}`); srv.closeAllConnections(); return new Promise((r) => srv.close(r)); },
   };
 }
@@ -564,4 +566,59 @@ test('a renderer seen again: last-seen moves on at most once a day, so the file 
   assert.equal(d.known.get(id)!.seenAt, t0);
   d.know(id, k, t0 + 25 * HOUR);
   assert.deepEqual(d.known.get(id), { ...k, seenAt: t0 + 25 * HOUR }, 'MAC kept, time moved on');
+});
+
+test('positionNow: a playing TV is moved on by the time since its sample, at most 6 s; paused or held, it stays', () => {
+  const at = 1_000_000;
+  assert.equal(d.positionNow(100, at, true, at + 1500), 101.5);
+  assert.equal(d.positionNow(100, at, true, at + 60_000), 106, 'capped');
+  assert.equal(d.positionNow(100, at, true, at - 500), 100, 'a clock step back adds nothing');
+  assert.equal(d.positionNow(100, at, false, at + 1500), 100, 'paused');
+  assert.equal(d.positionNow(100, 0, true, at), 100, 'held while it reloads');
+});
+
+test('a subtitle reload starts where the TV is now, not at the last poll', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.now() });
+  const tv = await fakeTv();
+  t.after(async () => { await stop(false); await tv.close(); });
+  fakeIo(t);
+  await castTo(film(tv.id));
+  t.mock.timers.tick(2000);
+  await until(() => status().currentTime === 754 && status().state === 'PLAYING', 'a poll');
+  t.mock.timers.tick(1500);
+  tv.bodies.length = 0;
+  await setSubtitle(null);
+  const seek = tv.bodies.find((b) => b.includes('<u:Seek'));
+  assert.match(seek ?? '', /<Target>00:12:35<\/Target>/, 'the poll said 0:12:34, 1.5 s ago');
+});
+
+test('observe asks the TVs only while someone follows the event stream or Kino casts to a TV', async (t) => {
+  const [a, b] = [await fakeTv(), await fakeTv()];
+  t.after(async () => { await stop(false); await a.close(); await b.close(); });
+  fakeIo(t);
+  let clients = 0;
+  io.watchers = () => clients;
+  await d.observe();
+  assert.deepEqual([a.calls, b.calls], [[], []], 'nobody watching: no SOAP calls');
+  clients = 1;
+  await d.observe();
+  assert.ok(a.calls.includes('GetMediaInfo') && b.calls.includes('GetMediaInfo'), 'a phone on the event stream: both asked');
+  assert.equal(receiverInfo(b.id)?.app?.name, 'Another app', 'what another app plays shows in the Cast Center');
+  clients = 0;
+  await castTo(film(a.id));
+  b.calls.length = 0;
+  await d.observe();
+  assert.ok(b.calls.includes('GetMediaInfo'), 'a cast of Kino\'s: the other TVs are still asked');
+});
+
+test('unwatched, a cast to a TV that went off since it was last asked checks it first, and wakes it', async (t) => {
+  const tv = await fakeTv();
+  t.after(async () => { await stop(false); await tv.close(); });
+  const wakes = fakeIo(t);
+  io.watchers = () => 0;
+  io.wake = async (mac) => { wakes.push(mac); tv.on(); };
+  d.known.get(tv.id)!.mac = '02:00:00:00:00:01';
+  tv.sleep();
+  const s = await castTo(film(tv.id));
+  assert.deepEqual([s.active, wakes], [true, ['02:00:00:00:00:01']]);
 });

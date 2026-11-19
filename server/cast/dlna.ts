@@ -18,6 +18,7 @@ import { mimeFor } from '../media/range.js';
 import { listSubtitles } from '../subs/index.js';
 import { parseVideoId } from '../meta.js';
 import { haEvent } from '../ha.js';
+import { clientCount, onClientConnect } from '../events.js';
 import * as lg from './lg.js';
 import type { DecodeCaps } from '../score.js';
 import type { CastDevice, CastHandoff, CastPlayRequest, CastStatus, ReceiverInfo, SubtitleTrack, MediaType } from '../types.js';
@@ -196,7 +197,8 @@ function wakeable(id: string): void {
  */
 async function awake(id: string, signal?: AbortSignal): Promise<Renderer | undefined> {
   const r = renderers.get(id);
-  if (r && !asleep(id)) return r;
+  // Unwatched, nothing has asked it lately (observe), so it is asked now whether it is still on.
+  if (r && !asleep(id) && watched()) return r;
   if (r && !wakes.has(id)) { try { await soap(r.avControl, AV, 'GetTransportInfo', {}, 2500, signal); misses.delete(id); return r; } catch { /* off, wake it */ } }
   const k = known.get(id);
   if (!k) throw notFound();
@@ -276,6 +278,8 @@ export const io = {
   wake: sendWake,
   /** Turn an LG TV off over its own remote protocol (lg.ts). */
   powerOff: lg.turnOff,
+  /** Phones and browsers following the event stream: observe() runs only while there is one, or a cast of Kino's. */
+  watchers: clientCount,
   /** A pause, cut short when `signal` aborts. */
   wait: (ms: number, signal?: AbortSignal): Promise<void> => sleep(ms, undefined, { signal }).catch(() => undefined),
 };
@@ -331,6 +335,7 @@ export function start(): void {
     timer = setInterval(() => { search(); for (const [id, r] of renderers) if (Date.now() - r.seenAt > 10 * 60_000 && cur?.dev.id !== id) { renderers.delete(id); log.info('renderer gone', { name: r.name }); } pruneKnown(); }, 60_000);
     timer.unref();
     setInterval(() => void observe(), 4000).unref();
+    onClientConnect(() => void observe());   // someone opened Kino: what the TVs do now, not when the last one left
   } catch (e) { log.warn('ssdp unavailable', { err: errMsg(e) }); }
   // Second socket on the multicast group itself: a TV that turns on announces itself (NOTIFY ssdp:alive) without waiting to be asked.
   try {
@@ -353,6 +358,8 @@ interface Cur {
   dev: Renderer; req: CastPlayRequest; infoHash: string; fileIdx: number; fileName: string; duration: number; type: MediaType;
   tracks: SubtitleTrack[]; activeSubId?: string; subOffsetMs: number;
   state: CastStatus['state']; pos: number; volume: number; muted: boolean; lastSave: number; started: number; sawPlaying: boolean; poll?: NodeJS.Timeout; polling?: boolean;
+  /** When `pos` was sampled (ms), 0 while it stands still (a reload): positionNow() moves it on by the time since. */
+  posAt: number;
   /** Loads of this session begun so far, and the newest one's end: a newer load waits for it, see reload(). */
   loads?: number; lastLoad?: Promise<void>;
 }
@@ -465,6 +472,11 @@ function remember(key: string, a: Asked): void {
   saveAsked();
 }
 let observing = false;
+/**
+ * Whether observe() asks the TVs: only while someone can see the Cast Center (a phone or browser on the event stream) or
+ * Kino casts to a TV. Unwatched, `seen` and `misses` stand still until the next client connects, which asks at once.
+ */
+const watched = (): boolean => !!cur || io.watchers() > 0;
 /** No taking back while Kino itself is starting or stopping something: the TV still shows the old file for a moment. */
 let quietUntil = 0;
 const hush = (ms = 15_000) => { quietUntil = Math.max(quietUntil, Date.now() + ms); };
@@ -493,7 +505,7 @@ async function ask(r: Renderer): Promise<Seen> {
 }
 
 async function observe(): Promise<void> {
-  if (observing) return;
+  if (observing || !watched()) return;
   observing = true;
   try {
     await Promise.all([...renderers.values()].filter((r) => cur?.dev.id !== r.id).map(async (r) => {
@@ -516,7 +528,7 @@ function adopt(dev: Renderer, f: { infoHash: string; fileIdx: number }, s: Seen)
   const c: Cur = {
     dev, req, infoHash: f.infoHash, fileIdx: f.fileIdx, fileName: a?.fileName || s.title || '', duration: a?.duration || s.dur, type: a?.type || p?.type || 'movie',
     tracks: a?.tracks || [], activeSubId: a?.activeSubId, subOffsetMs: a?.subOffsetMs || 0,
-    state: s.state, pos: s.pos, volume: 0, muted: false, lastSave: 0, started: Date.now() - 20_000, sawPlaying: s.state === 'PLAYING',
+    state: s.state, pos: s.pos, posAt: Date.now(), volume: 0, muted: false, lastSave: 0, started: Date.now() - 20_000, sawPlaying: s.state === 'PLAYING',
   };
   cur = c;
   seen.delete(dev.id);
@@ -547,6 +559,13 @@ async function playingAnyway(c: Cur): Promise<boolean> {
     await io.wait(1000);
   }
   return false;
+}
+
+/** The most a position is moved on past its sample: past a few missed polls it is no better than the sample. */
+const MAX_DRIFT_SEC = 6;
+/** Where a TV that was at `pos` at `at` (ms, 0 for standing still) is at `now`: moved on by the time since while it plays. */
+function positionNow(pos: number, at: number, playing: boolean, now = Date.now()): number {
+  return playing && at > 0 ? pos + Math.min(MAX_DRIFT_SEC, Math.max(0, (now - at) / 1000)) : pos;
 }
 
 function persist(c: Cur, pos: number): void {
@@ -618,7 +637,7 @@ async function poll(c: Cur): Promise<void> {
     const st = tag(ti, 'CurrentTransportState');
     const pos = secs(tag(pi, 'RelTime')); const dur = secs(tag(pi, 'TrackDuration'));
     if (dur > 0 && !c.duration) c.duration = dur;
-    if (pos > 0 || st === 'PLAYING') c.pos = pos;
+    if (pos > 0 || st === 'PLAYING') { c.pos = pos; c.posAt = Date.now(); }
     const prev = c.state;
     c.state = st === 'PLAYING' ? 'PLAYING' : st === 'PAUSED_PLAYBACK' ? 'PAUSED' : st === 'TRANSITIONING' ? 'BUFFERING' : st === 'STOPPED' || st === 'NO_MEDIA_PRESENT' ? 'IDLE' : c.state;
     if (c.state === 'PLAYING') c.sawPlaying = true;
@@ -694,7 +713,7 @@ async function castFile(req: CastPlayRequest, opts: CastOpts, signal: AbortSigna
   hush();
   if (cur) await stop(false);
   if (gone()) return status();
-  const c: Cur = { dev, req, infoHash: t.infoHash, fileIdx: idx, fileName: t.files[idx].name, duration, type, tracks, activeSubId, subOffsetMs: req.subOffsetMs ?? saved?.subOffsetMs ?? 0, state: 'BUFFERING', pos: req.startTime || 0, volume: 0, muted: false, lastSave: 0, started: Date.now(), sawPlaying: false };
+  const c: Cur = { dev, req, infoHash: t.infoHash, fileIdx: idx, fileName: t.files[idx].name, duration, type, tracks, activeSubId, subOffsetMs: req.subOffsetMs ?? saved?.subOffsetMs ?? 0, state: 'BUFFERING', pos: req.startTime || 0, posAt: 0, volume: 0, muted: false, lastSave: 0, started: Date.now(), sawPlaying: false };
   cur = c;
   remember(`${c.infoHash}:${c.fileIdx}`, { req, duration, type, tracks, activeSubId, subOffsetMs: c.subOffsetMs, fileName: c.fileName, at: Date.now() });
   publish();
@@ -719,7 +738,7 @@ async function castFile(req: CastPlayRequest, opts: CastOpts, signal: AbortSigna
 
 export async function pause(): Promise<void> { if (cur) { await soap(cur.dev.avControl, AV, 'Pause'); cur.state = 'PAUSED'; publish(); } }
 export async function resume(): Promise<void> { if (cur) { await soap(cur.dev.avControl, AV, 'Play', { Speed: '1' }); cur.state = 'PLAYING'; publish(); } }
-export async function seek(time: number): Promise<void> { if (cur) { await soap(cur.dev.avControl, AV, 'Seek', { Unit: 'REL_TIME', Target: hms(time) }); cur.pos = time; publish(); } }
+export async function seek(time: number): Promise<void> { if (cur) { await soap(cur.dev.avControl, AV, 'Seek', { Unit: 'REL_TIME', Target: hms(time) }); cur.pos = time; cur.posAt = Date.now(); publish(); } }
 export async function setVolume(id: string, v: { level?: number; muted?: boolean }): Promise<void> {
   const r = renderers.get(id);
   if (!r) throw httpError(404, 'TV not found');
@@ -734,6 +753,8 @@ export async function setVolume(id: string, v: { level?: number; muted?: boolean
  */
 export async function setSubtitle(subId: string | null, offsetMs?: number): Promise<void> {
   const c = cur; if (!c) return;
+  // From where it is now, not at the last poll up to 2 s ago; held there while it reloads, so a second change in a row starts there too.
+  c.pos = positionNow(c.pos, c.posAt, c.state === 'PLAYING'); c.posAt = 0;
   c.activeSubId = subId && c.tracks.some((t) => t.id === subId) ? subId : undefined;
   if (offsetMs != null) c.subOffsetMs = offsetMs;
   if (c.req.videoId) saveSubChoice(c.req.videoId, { subId: c.activeSubId ?? null, subLang: c.tracks.find((t) => t.id === c.activeSubId)?.lang, subOffsetMs: c.subOffsetMs });
@@ -755,7 +776,7 @@ export async function stop(haNotify = true, reason = 'stopped'): Promise<void> {
   try { await soap(c.dev.avControl, AV, 'Stop', {}, 5000); } catch { /* gone */ }
   publish();
 }
-export const _internal = { hms, secs, tag, esc, describe, renderers, known, asked, freshAsked, loadAsked, freshKnown, loadKnown, pruneKnown, know, KNOWN_TTL };
+export const _internal = { hms, secs, tag, esc, describe, renderers, known, asked, freshAsked, loadAsked, freshKnown, loadKnown, pruneKnown, know, KNOWN_TTL, observe, positionNow };
 export function handoffInfo(): CastHandoff | null {
   return cur ? { videoId: cur.req.videoId, pos: cur.pos, infoHash: cur.infoHash, fileIdx: cur.fileIdx, title: cur.req.title, poster: cur.req.poster } : null;
 }
