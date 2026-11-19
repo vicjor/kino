@@ -80,9 +80,49 @@ async function soap(url: string, service: string, action: string, args: Record<s
  * from the ARP table, lists it as off, and wakes it with Wake-on-LAN when you cast to it.
  * The LG only listens for that with "Turn on via Wi-Fi" (Settings, General, Devices) switched on.
  */
-interface Known { id: string; name: string; model: string; host: string; location: string; mac?: string }
+/** A renderer Kino has seen. `seenAt`: when it last answered (ms), kept to a day's precision so the file is not rewritten every minute. */
+interface Known { id: string; name: string; model: string; host: string; location: string; mac?: string; seenAt: number }
 const KNOWN_FILE = path.join(DATA_DIR, 'dlna-known.json');
-const known = new Map<string, Known>((() => { try { return Object.entries(JSON.parse(fs.readFileSync(KNOWN_FILE, 'utf8')) as Record<string, Known>); } catch { return []; } })());
+/** A renderer unseen this long is forgotten: a TV sold or moved out stops showing as off in the Cast Center. */
+const KNOWN_TTL = 60 * 24 * 3600_000;
+/** How stale `seenAt` may get before a sighting writes the file again. */
+const SEEN_PRECISION = 24 * 3600_000;
+/** Filled by start() (loadKnown). */
+const known = new Map<string, Known>();
+const MAC = /^[0-9a-f]{2}(?::[0-9a-f]{2}){5}$/;
+const str = (x: unknown): x is string => typeof x === 'string' && x.length > 0;
+const httpUrl = (x: unknown): boolean => { if (!str(x)) return false; try { return /^https?:$/.test(new URL(x).protocol); } catch { return false; } };
+/**
+ * dlna-known.json as start() loads it: each entry checked (an id under its own key, a name, a host, an http location, a
+ * MAC only when it is one), malformed ones dropped, a bad MAC dropped alone. An entry with no `seenAt` (older files)
+ * counts as seen `now`; one unseen for KNOWN_TTL goes.
+ */
+function freshKnown(raw: unknown, now = Date.now()): Map<string, Known> {
+  const out = new Map<string, Known>();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [key, k] of Object.entries(raw as Record<string, Partial<Known> | null>)) {
+    if (!k || typeof k !== 'object' || k.id !== key || !key.startsWith('dlna:') || !str(k.name) || !str(k.host) || !httpUrl(k.location)) continue;
+    const seenAt = typeof k.seenAt === 'number' && Number.isFinite(k.seenAt) ? Math.min(k.seenAt, now) : now;
+    if (now - seenAt > KNOWN_TTL) continue;
+    out.set(key, { id: key, name: k.name, model: typeof k.model === 'string' ? k.model : '', host: k.host, location: k.location as string, ...(typeof k.mac === 'string' && MAC.test(k.mac) ? { mac: k.mac } : {}), seenAt });
+  }
+  return out;
+}
+/** Read dlna-known.json (freshKnown), and write it back when that dropped or changed anything. */
+function loadKnown(file = KNOWN_FILE, now = Date.now()): void {
+  let raw: unknown;
+  try { raw = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return; }
+  known.clear();
+  for (const [k, v] of freshKnown(raw, now)) known.set(k, v);
+  const text = JSON.stringify(Object.fromEntries(known));
+  if (text !== JSON.stringify(raw)) try { writeAtomic(file, text); } catch (e) { log.debug('could not save renderers', { err: errMsg(e) }); }
+}
+/** Forget renderers unseen for KNOWN_TTL that SSDP does not see now either. */
+function pruneKnown(now = Date.now(), file = KNOWN_FILE): void {
+  let gone = false;
+  for (const [id, k] of known) if (now - k.seenAt > KNOWN_TTL && !renderers.has(id)) { known.delete(id); gone = true; log.info('renderer forgotten', { name: k.name }); }
+  if (gone) { saveKnown(file); events.emit('receivers'); }
+}
 /** Failed status checks in a row, per renderer: two and it counts as off, even before SSDP forgets it. */
 const misses = new Map<string, number>();
 /**
@@ -94,10 +134,11 @@ const wakes = new Map<string, Wake>();
 const asleep = (id: string) => cur?.dev.id !== id && (!renderers.has(id) || (misses.get(id) || 0) >= 2);
 const offNoMac = (k: Known) => httpError(503, `${k.name} is off. Turn it on with the remote this once, and Kino can turn it on by itself after that.`);
 
-function saveKnown(): void { try { writeAtomic(KNOWN_FILE, JSON.stringify(Object.fromEntries(known))); } catch (e) { log.debug('could not save renderers', { err: errMsg(e) }); } }
-function know(id: string, k: Known): void {
+function saveKnown(file = KNOWN_FILE): void { try { writeAtomic(file, JSON.stringify(Object.fromEntries(known))); } catch (e) { log.debug('could not save renderers', { err: errMsg(e) }); } }
+/** A sighting: kept, and written when anything but the time changed, or the time by more than SEEN_PRECISION. */
+function know(id: string, k: Omit<Known, 'seenAt'>, now = Date.now()): void {
   const prev = known.get(id);
-  const next = { ...k, mac: prev?.mac };
+  const next: Known = { ...k, mac: prev?.mac, seenAt: prev && now - prev.seenAt < SEEN_PRECISION ? prev.seenAt : now };
   if (JSON.stringify(prev) !== JSON.stringify(next)) { known.set(id, next); saveKnown(); }
   if (!next.mac) void learnMac(id, k.host);
 }
@@ -279,6 +320,7 @@ function onSsdp(buf: Buffer, rinfo: dgram.RemoteInfo): void {
 }
 
 export function start(): void {
+  loadKnown();
   loadAsked();
   try {
     sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
@@ -286,7 +328,7 @@ export function start(): void {
     sock.on('message', onSsdp);
     // The TV misses the first searches after a boot more often than not: retry quickly for the first minute.
     sock.bind(0, () => { for (const ms of [0, 1500, 5000, 12_000, 25_000, 45_000]) setTimeout(search, ms).unref(); });
-    timer = setInterval(() => { search(); for (const [id, r] of renderers) if (Date.now() - r.seenAt > 10 * 60_000 && cur?.dev.id !== id) { renderers.delete(id); log.info('renderer gone', { name: r.name }); } }, 60_000);
+    timer = setInterval(() => { search(); for (const [id, r] of renderers) if (Date.now() - r.seenAt > 10 * 60_000 && cur?.dev.id !== id) { renderers.delete(id); log.info('renderer gone', { name: r.name }); } pruneKnown(); }, 60_000);
     timer.unref();
     setInterval(() => void observe(), 4000).unref();
   } catch (e) { log.warn('ssdp unavailable', { err: errMsg(e) }); }
@@ -713,7 +755,7 @@ export async function stop(haNotify = true, reason = 'stopped'): Promise<void> {
   try { await soap(c.dev.avControl, AV, 'Stop', {}, 5000); } catch { /* gone */ }
   publish();
 }
-export const _internal = { hms, secs, tag, esc, describe, renderers, known, asked, freshAsked, loadAsked };
+export const _internal = { hms, secs, tag, esc, describe, renderers, known, asked, freshAsked, loadAsked, freshKnown, loadKnown, pruneKnown, know, KNOWN_TTL };
 export function handoffInfo(): CastHandoff | null {
   return cur ? { videoId: cur.req.videoId, pos: cur.pos, infoHash: cur.infoHash, fileIdx: cur.fileIdx, title: cur.req.title, poster: cur.req.poster } : null;
 }

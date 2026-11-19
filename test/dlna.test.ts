@@ -516,3 +516,52 @@ test('a cast that replaces another for the same sleeping TV waits on the same wa
   const s = await second;
   assert.deepEqual([s.deviceId, s.infoHash], [tv.id, other]);
 });
+
+test('dlna-known.json as loaded: malformed entries go, a bad MAC goes alone, no last-seen counts as now, 60 days unseen goes', () => {
+  const now = Date.now(), DAY = 24 * HOUR;
+  const tv = (id: string, more: Record<string, unknown> = {}) => ({ id, name: 'Living room TV', model: 'Example TV', host: '192.168.1.74', location: 'http://192.168.1.74:1234/desc.xml', ...more });
+  const out = d.freshKnown({
+    'dlna:old-file': tv('dlna:old-file', { mac: '00:1a:0b:cc:0d:ef' }),
+    'dlna:recent': tv('dlna:recent', { seenAt: now - 59 * DAY }),
+    'dlna:stale': tv('dlna:stale', { seenAt: now - 61 * DAY }),
+    'dlna:bad-mac': tv('dlna:bad-mac', { mac: 'not a mac', seenAt: now - DAY }),
+    'dlna:wrong-key': tv('dlna:other'),
+    'dlna:no-host': tv('dlna:no-host', { host: '' }),
+    'dlna:bad-location': tv('dlna:bad-location', { location: 'file:///etc/passwd' }),
+    'dlna:not-object': 'x', 'dlna:null': null, 'nodlna': tv('nodlna'),
+  }, now);
+  assert.deepEqual([...out.keys()], ['dlna:old-file', 'dlna:recent', 'dlna:bad-mac']);
+  assert.deepEqual(out.get('dlna:old-file'), { ...tv('dlna:old-file', { mac: '00:1a:0b:cc:0d:ef' }), seenAt: now });
+  assert.equal(out.get('dlna:bad-mac')!.mac, undefined);
+  assert.equal(d.freshKnown(['x'], now).size, 0);
+  assert.equal(d.freshKnown('junk', now).size, 0);
+});
+
+test('dlna-known.json is loaded at start, not at import, written back pruned; a renderer unseen for 60 days is forgotten', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kino-known-'));
+  const saved = new Map(d.known);
+  t.after(() => { d.known.clear(); for (const [k, v] of saved) d.known.set(k, v); fs.rmSync(dir, { recursive: true, force: true }); });
+  const file = path.join(dir, 'dlna-known.json'), now = Date.now();
+  const tv = (id: string, seenAt?: number) => ({ id, name: 'TV', model: 'Example TV', host: '192.168.1.74', location: 'http://192.168.1.74:1234/desc.xml', ...(seenAt ? { seenAt } : {}) });
+  fs.writeFileSync(file, JSON.stringify({ 'dlna:a': tv('dlna:a'), 'dlna:b': tv('dlna:b', now - 61 * 24 * HOUR), 'dlna:c': { id: 'dlna:c' } }));
+  d.loadKnown(file, now);
+  assert.deepEqual([...d.known.keys()], ['dlna:a']);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { 'dlna:a': tv('dlna:a', now) }, 'written back with its last-seen time');
+  d.pruneKnown(now + d.KNOWN_TTL - 1, file);
+  assert.ok(d.known.has('dlna:a'));
+  d.pruneKnown(now + d.KNOWN_TTL + 1, file);
+  assert.equal(d.known.has('dlna:a'), false);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), {});
+});
+
+test('a renderer seen again: last-seen moves on at most once a day, so the file is not rewritten every minute', (t) => {
+  const id = 'dlna:seen-test';
+  t.after(() => { d.known.delete(id); });
+  const k = { id, name: 'TV', model: 'Example TV', host: '192.168.1.74', location: 'http://192.168.1.74:1234/desc.xml', mac: '00:1a:0b:cc:0d:ef' };
+  const t0 = Date.now();
+  d.known.set(id, { ...k, seenAt: t0 });
+  d.know(id, k, t0 + HOUR);
+  assert.equal(d.known.get(id)!.seenAt, t0);
+  d.know(id, k, t0 + 25 * HOUR);
+  assert.deepEqual(d.known.get(id), { ...k, seenAt: t0 + 25 * HOUR }, 'MAC kept, time moved on');
+});
