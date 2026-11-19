@@ -5,7 +5,7 @@ import { logger, errMsg } from './log.js';
 import { httpError } from './errors.js';
 import { getState, update } from './store.js';
 import { parseStream, flagPlaceholderSeeds, type AddonStream } from './parse.js';
-import type { AddonInfo, MediaType, Source, CatalogEntry } from './types.js';
+import type { AddonInfo, AddonFailure, AddonRow, MediaType, Source, CatalogEntry } from './types.js';
 
 const log = logger('addons');
 
@@ -43,7 +43,6 @@ async function fetchAddon<T>(url: string, timeoutMs: number): Promise<T> {
 /** How long a manifest fetch may take. An object so a test can shorten it. */
 export const manifestTimeout = { ms: 8000 };
 /** A failure an addon is remembered by for a minute: when, and the error (naming the origin, never the whole URL). */
-export interface AddonFailure { failedAt: number; reason: string }
 const failure = (e: unknown): AddonFailure => ({ failedAt: Date.now(), reason: errMsg(e) });
 /**
  * A manifest that just failed is not asked for again for a minute: every streams, subtitles and
@@ -72,9 +71,6 @@ export async function manifest(url: string, opts: { retry?: boolean } = {}): Pro
 function resources(m: Manifest): string[] {
   return (m.resources || []).map((r) => (typeof r === 'string' ? r : r.name));
 }
-
-/** An installed addon as Settings lists it. `skipped`: streams or subtitles are not asked of it for now, it did not answer lately. */
-export type AddonRow = AddonInfo & { skipped?: AddonFailure };
 
 export async function listAddons(): Promise<AddonRow[]> {
   const urls = getState().settings.addons;

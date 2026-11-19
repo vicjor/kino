@@ -270,7 +270,7 @@ export interface Ratings {
   episodes?: Record<string, { rating: number; votes: number }>;   // videoId -> rating
 }
 
-export interface DiskInfo {
+interface DiskInfo {
   freeBytes: number;
   totalBytes: number;
   cacheBytes: number;
@@ -352,6 +352,90 @@ export type ErrorCode = 'no-peers' | 'unreadable' | 'disk-full' | 'tool-broken' 
  *   ended-early  the file played straight through ran dry well before its end
  */
 export type PickOutcome = 'stall' | 'switch' | 'no-peers' | 'unreadable' | 'ended-early';
+
+/** GET /api/meta/:type/:id: the title, progress per video id, and whether it is saved or followed. */
+export interface MetaResponse { meta: Meta; progress: Record<string, Progress>; inWatchlist: boolean; following: boolean }
+/** GET /api/meta/:type/:id/similar: one rail of titles like this one. */
+export interface SimilarRail { title: string; reason?: string; genre?: string; items: MetaPreview[] }
+export interface SearchResponse { results: MetaPreview[] }
+/** GET /api/following: a followed show as the Library lists it. */
+export interface Followed { id: string; name: string; poster?: string }
+/** The plain `{ ok }` answer of a write that returns nothing else. */
+export interface OkResponse { ok: boolean }
+/** POST /api/restore: how many titles in progress and in the watchlist after the merge. */
+export interface RestoreResult { ok: boolean; progress: number; watchlist: number }
+
+/** Kino found its state file unreadable and started fresh: where the old file went (when it could be moved), and when. */
+export interface StateRecovered { movedTo?: string; at: number }
+/**
+ * A load repaired or pruned the state file and wrote it back: top-level fields repaired, unreadable progress entries
+ * left out, short old progress and unused receivers' cast history pruned, and where the bytes from before went.
+ */
+export interface StateRepaired { repairedFields: number; droppedProgress: number; prunedProgress: number; prunedCastDevices: number; backup?: string; at: number }
+
+/** GET /health. Without the PIN cookie only ok, version, uptime and busy; the rest only when unlocked. */
+export interface Health {
+  ok: boolean; version: string; uptime: number; busy: boolean;
+  node?: string; freeBytes?: number; activeTorrents?: number;
+  cast?: boolean; hlsSessions?: number; streams?: number;      // who is watching (server/health.ts Watching)
+  castDevices?: number; lanIp?: string; hostname?: string | null;
+  ffmpeg?: boolean; ffmpegPath?: string; ffmpegChecking?: boolean;
+  ffprobe?: boolean; ffprobePath?: string; ffprobeChecking?: boolean;
+  hwEncoder?: boolean; imdbDatasets?: number | null; platform?: string; dataDir?: string;
+  stateRecovered?: StateRecovered; stateRepaired?: StateRepaired; pinPaused?: boolean;
+}
+
+/**
+ * GET /api/disk: DiskInfo plus the downloads saved for later, their bytes (part of cacheBytes) and which entries
+ * they are. They count toward the cache limit but are never evicted or cleared.
+ */
+export type DiskReport = Omit<DiskInfo, 'entries'> & { downloadBytes: number; entries: (DiskInfo['entries'][number] & { download: boolean })[] };
+
+/** Why an addon is skipped for now: when it last failed and how. */
+export interface AddonFailure { failedAt: number; reason: string }
+/** An installed addon as Settings lists it. `skipped`: streams or subtitles are not asked of it for now, it did not answer lately. */
+export type AddonRow = AddonInfo & { skipped?: AddonFailure };
+
+/** Where the TV was when a cast stopped so the phone can take over (POST /api/cast/handoff; null when nothing was casting). */
+export interface CastHandoff { videoId?: string; pos: number; infoHash: string; fileIdx: number; title: string; poster?: string }
+/** A cast receiver command (POST /api/cast/receivers/:id/:cmd) and its body. */
+export type ReceiverCommand = 'stop' | 'pause' | 'play' | 'volume' | 'seek';
+export interface ReceiverCommandBody { level?: number; muted?: boolean; time?: number }
+/** POST /api/cast/volume. */
+export interface VolumeRequest { level?: number; muted?: boolean }
+
+type EstimateConfidence = 'high' | 'medium' | 'low' | 'none';
+/** GET /api/intro: where the opening titles start and end, in seconds, and how that was found. */
+export interface IntroEstimate { start?: number; end?: number; source: 'chapter' | 'subtitles' | 'learned' | 'none'; confidence: EstimateConfidence }
+/** GET /api/credits: where the end credits start, in seconds, and how that was found. */
+export interface CreditsEstimate { at?: number; source: 'learned' | 'chapter' | 'subtitles' | 'none'; confidence: EstimateConfidence }
+/** The file the intro and credits estimates are for, and the title they learn per. */
+export interface FileRef { infoHash: string; fileIdx: number; videoId?: string; metaId?: string }
+/** POST /api/intro/learn: titles you skipped by hand, from where to where. */
+export interface IntroLearnRequest { metaId: string; start: number; end: number; infoHash?: string; fileIdx?: number; videoId?: string }
+
+/** GET /api/browse query: everything but the type is optional. */
+export interface BrowseQuery { genre?: string; sort?: BrowseSort; page?: number; from?: number; to?: number }
+/** POST /api/hls/:sid/seek: the session that now plays from `timeOffset`. */
+export interface HlsSeekResponse { url: string; sessionId: string; timeOffset: number }
+/** POST /api/torrent/add: the torrent and its files. */
+export interface TorrentAddResponse { infoHash: string; name: string; files: TorrentFileInfo[] }
+/** GET /api/subs query: by video id, by file, or both. */
+export interface SubsQuery { type?: string; videoId?: string; infoHash?: string; fileIdx?: number }
+export interface SubsResponse { tracks: SubtitleTrack[] }
+/** POST /api/subs/sync: align subtitle `id` to the speech of the file from `from` seconds. */
+export interface SubSyncRequest { id: string; infoHash: string; fileIdx: number; from: number }
+/** The offset found and how well the cues matched speech (0 to 1). */
+export interface SubSyncResult { offsetMs: number; score: number }
+/** POST /api/picks/outcome: what happened to a release picked from a list, `pos` and `watchedSec` in seconds. */
+export interface PickOutcomeReport { videoId: string; chosen: string; outcome: PickOutcome; pos: number; watchedSec: number }
+/** PUT /api/progress/:videoId: any fields of a progress entry, keyed by its video id. */
+export type ProgressPatch = Partial<Progress> & { videoId: string };
+/** PUT /api/watchlist/:id and /api/following/:id. */
+export interface WatchlistAdd { type: MediaType; name: string; poster?: string }
+export interface FollowAdd { name: string; poster?: string }
+/** POST /api/downloads: the file to keep, and what to show for it. */
+export interface DownloadRequest { infoHash: string; fileIdx?: number; videoId?: string; metaId?: string; type?: MediaType; name?: string; poster?: string; background?: string }
 
 // SSE events (name -> payload)
 export interface Events {

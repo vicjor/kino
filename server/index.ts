@@ -26,6 +26,7 @@ import { announceShutdown } from './events.js';
 import { isCrossSiteWrite } from './csrf.js';
 import { reapOrphanTranscoders, runShutdown, refuseWhileStopping } from './lifecycle.js';
 import { hostGuard, envHosts, plainRedirect, UNKNOWN_HOST } from './host.js';
+import type { Health } from './types.js';
 
 const log = logger('main');
 const VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../../package.json'), 'utf8')).version as string; } catch { try { return JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../package.json'), 'utf8')).version as string; } catch { return 'dev'; } } })();
@@ -60,9 +61,9 @@ app.get('/health', (req, res) => {
   const viewers = viewersNow();
   const uptime = Math.round((Date.now() - started) / 1000), busy = isBusy(viewers);
   // Locked out: only what the deploy scripts read (busy, uptime for the restart check). No paths, names or devices.
-  if (!unlocked(req)) { res.json({ ok: true, version: VERSION, uptime, busy }); return; }
+  if (!unlocked(req)) { res.json({ ok: true, version: VERSION, uptime, busy } satisfies Health); return; }
   const { free } = freeBytes(); const ff = hls.binStatus('ffmpeg'), fp = hls.binStatus('ffprobe');   // runnable, not just present (cached; *Checking: a background re-check runs, the boolean is the answer from before it)
-  res.json({ ok: true, version: VERSION, uptime, node: process.version, freeBytes: free, activeTorrents: torrent.activeTorrents(), ...viewers, busy, castDevices: discovery.list().length, lanIp: lanIp(), hostname: mdnsName.hostname(), ffmpeg: ff.ok, ffmpegPath: ff.path, ffmpegChecking: ff.checking, ffprobe: fp.ok, ffprobePath: fp.path, ffprobeChecking: fp.checking, hwEncoder: hls.hwEnabled(), imdbDatasets: datasetAge(), platform: process.platform, dataDir: DATA_DIR, stateRecovered: recoveryNotice(), stateRepaired: repairNotice(), ...(tries.sharedPause() >= LONG_PAUSE_MS ? { pinPaused: true } : {}) });
+  res.json({ ok: true, version: VERSION, uptime, node: process.version, freeBytes: free, activeTorrents: torrent.activeTorrents(), ...viewers, busy, castDevices: discovery.list().length, lanIp: lanIp(), hostname: mdnsName.hostname(), ffmpeg: ff.ok, ffmpegPath: ff.path, ffmpegChecking: ff.checking, ffprobe: fp.ok, ffprobePath: fp.path, ffprobeChecking: fp.checking, hwEncoder: hls.hwEnabled(), imdbDatasets: datasetAge(), platform: process.platform, dataDir: DATA_DIR, stateRecovered: recoveryNotice(), stateRepaired: repairNotice(), ...(tries.sharedPause() >= LONG_PAUSE_MS ? { pinPaused: true } : {}) } satisfies Health);
 });
 if (PIN) {
   app.post('/api/auth', (req, res) => {

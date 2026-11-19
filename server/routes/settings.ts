@@ -6,7 +6,7 @@ import * as torrent from '../torrent.js';
 import * as downloads from '../downloads.js';
 import { freeBytes, hlsBytes } from '../disk.js';
 import { apiRouter } from './util.js';
-import type { DiskInfo } from '../types.js';
+import type { DiskReport } from '../types.js';
 
 /** Settings, addons, disk and cache, backup and restore. */
 export const api = apiRouter();
@@ -32,7 +32,6 @@ api.delete('/addons', (req, res) => { addons.removeAddon(String(req.query.url ||
  * DiskInfo plus the downloads saved for later: their bytes (part of cacheBytes) and which entries they are. They count
  * toward the cache limit but are never evicted or cleared, so on their own they can pass it. Older clients ignore both.
  */
-type DiskReport = Omit<DiskInfo, 'entries'> & { downloadBytes: number; entries: (DiskInfo['entries'][number] & { download: boolean })[] };
 async function diskInfo(): Promise<DiskReport> {
   const hls = await hlsBytes();   // walked off the request thread, before the rest so all of it is read at one moment
   const { free, total } = freeBytes();

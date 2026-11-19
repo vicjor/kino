@@ -1,4 +1,4 @@
-import type { CastStatus, ReceiverInfo } from '../../server/types.js';
+import type { CastStatus, ReceiverInfo, VolumeRequest } from '../../server/types.js';
 import { api } from './api';
 import { setStore } from './store';
 
@@ -8,7 +8,7 @@ import { setStore } from './store';
  * only when there is none.
  */
 export interface TvVolume { level: number; muted: boolean; receiverId?: string; unknown?: boolean }
-export type VolumeChange = { level?: number; muted?: boolean };
+export type VolumeChange = VolumeRequest;
 
 /**
  * A DLNA TV that answers 0 and not muted is not telling its volume: the LG says so while it plays with sound. Its

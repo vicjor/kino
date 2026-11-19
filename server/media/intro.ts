@@ -7,11 +7,10 @@
  * Seconds throughout. A window is only ever offered as a button; nothing skips by itself.
  */
 import { median, type Chapter } from './credits.js';
+import type { IntroEstimate } from '../types.js';
 
 /** One skip you made: from where to where, and how long after `end` the next line of dialogue came. */
 export interface IntroSample { start: number; end: number; anchor?: number }
-type IntroSource = 'chapter' | 'subtitles' | 'learned' | 'none';
-export interface IntroEstimate { start?: number; end?: number; source: IntroSource; confidence: 'high' | 'medium' | 'low' | 'none' }
 /** A line of dialogue, in seconds. */
 export interface Line { start: number; end: number; text?: string }
 

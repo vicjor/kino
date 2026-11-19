@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { Settings } from '../../server/types.js';
-import { api, type StateRecovered, type StateRepaired } from '../lib/api';
+import type { Settings, StateRecovered, StateRepaired } from '../../server/types.js';
+import { api } from '../lib/api';
 import { useStore, setStore, toast } from '../lib/store';
 import { langName } from '../lib/format';
 import { ALWAYS_FIRST, choosableLangs, toggleLang } from '../lib/sub-langs';

@@ -1,4 +1,5 @@
-import { api, type StateRecovered, type StateRepaired } from '../lib/api';
+import { api } from '../lib/api';
+import type { StateRecovered, StateRepaired } from '../../server/types.js';
 import { toast } from '../lib/store';
 import { fileName, repairedText, repairedTitle } from '../lib/state-notice';
 

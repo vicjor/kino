@@ -7,9 +7,9 @@
  *   learned    a single earlier press
  * Anything else falls back to the player's fixed 30 seconds before the end.
  */
+import type { CreditsEstimate } from '../types.js';
+
 export interface Chapter { start: number; end: number; title?: string }
-type CreditsSource = 'learned' | 'chapter' | 'subtitles' | 'none';
-export interface CreditsEstimate { at?: number; source: CreditsSource; confidence: 'high' | 'medium' | 'low' | 'none' }
 
 const CREDIT_TITLE = /credit|ending|end title|outro|closing/i;
 

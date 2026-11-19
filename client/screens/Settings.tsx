@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { Settings as S } from '../../server/types.js';
-import { api, type StateRecovered, type StateRepaired } from '../lib/api';
+import type { Settings as S, StateRecovered, StateRepaired } from '../../server/types.js';
+import { api } from '../lib/api';
 import { navigate } from '../lib/router';
 import { FIELDS, fieldChange, type FieldKey } from '../lib/settings-fields';
 import { setStore, toast } from '../lib/store';

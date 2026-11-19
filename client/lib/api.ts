@@ -1,10 +1,12 @@
 import { setStore } from './store';
 import { caps, decodeQuery } from './player-caps';
-import type { IntroWindow } from './intro';
 import type {
-  HomeResponse, MetaPreview, Meta, Progress, StreamsResponse, PlayRequest, PlayResponse, TorrentStats,
-  TorrentFileInfo, SubtitleTrack, CastDevice, CastStatus, CastPlayRequest, Settings, AddonInfo, DiskInfo, MediaType, Target, ReceiverInfo, CastHistoryEntry, DownloadInfo, CatalogEntry, Ratings,
-  BrowseResponse, BrowseGenres, BrowseType, BrowseSort, PickOutcome,
+  HomeResponse, MetaPreview, Progress, StreamsResponse, PlayRequest, PlayResponse, TorrentStats,
+  CastDevice, CastStatus, CastPlayRequest, Settings, AddonInfo, Target, ReceiverInfo, CastHistoryEntry, DownloadInfo, CatalogEntry, Ratings,
+  BrowseResponse, BrowseGenres, BrowseType, PickOutcomeReport, MetaResponse, SimilarRail, SearchResponse, Followed, OkResponse, RestoreResult,
+  Health, DiskReport, AddonRow, CastHandoff, ReceiverCommand, ReceiverCommandBody, VolumeRequest, IntroEstimate, CreditsEstimate, FileRef,
+  IntroLearnRequest, BrowseQuery, HlsSeekResponse, TorrentAddResponse, SubsQuery, SubsResponse, SubSyncRequest, SubSyncResult, ProgressPatch,
+  WatchlistAdd, FollowAdd, DownloadRequest,
 } from '../../server/types.js';
 
 class ApiError extends Error { constructor(public status: number, msg: string, public code?: string) { super(msg); } }
@@ -84,23 +86,6 @@ const post = <T>(u: string, b?: unknown) => req<T>('POST', u, b ?? {});
 const put = <T>(u: string, b?: unknown) => req<T>('PUT', u, b ?? {});
 const del = <T>(u: string) => req<T>('DELETE', u);
 const enc = encodeURIComponent;
-export type MetaResponse = { meta: Meta; progress: Record<string, Progress>; inWatchlist: boolean; following: boolean };
-/** /health after Kino found its state file unreadable and started fresh: where the old file went (when it could be moved), and when. */
-export type StateRecovered = { movedTo?: string; at: number };
-/**
- * /health after a load repaired or pruned the state file and wrote it back (server RepairNotice): top-level fields repaired,
- * unreadable progress entries left out, short old progress and unused receivers' cast history pruned, the copy from before.
- */
-export type StateRepaired = { repairedFields: number; droppedProgress: number; prunedProgress: number; prunedCastDevices: number; backup?: string; at: number };
-/**
- * /api/disk: DiskInfo plus the downloads saved for later, their bytes (part of cacheBytes) and which entries they are.
- * They count toward the cache limit but are never evicted or cleared. Optional: an older server leaves them out.
- */
-export type DiskReport = Omit<DiskInfo, 'entries'> & { downloadBytes?: number; entries: (DiskInfo['entries'][number] & { download?: boolean })[] };
-/** Where the TV was when a cast stopped so this screen can take over. The server answers null when nothing was casting. */
-export type CastHandoff = { videoId?: string; pos: number; infoHash: string; fileIdx: number; title: string; poster?: string };
-/** An installed addon as /api/addons lists it. `skipped`: it did not answer lately, so streams and subtitles skip it for a minute (server AddonRow). */
-export type AddonRow = AddonInfo & { skipped?: { failedAt: number; reason: string } };
 
 /** A browser target tells the streams ranking which codecs it decodes; asked once. Part of the url, so of the cache key. */
 let decodes: string | undefined;
@@ -116,11 +101,11 @@ export const urls = {
 };
 
 export const api = {
-  health: () => get<{ ok: boolean; uptime: number; version?: string; node?: string; freeBytes?: number; activeTorrents?: number; cast?: unknown; lanIp?: string; hwEncoder?: boolean; imdbDatasets?: number | null; platform?: string; dataDir?: string; ffmpeg?: boolean; castDevices?: number; stateRecovered?: StateRecovered; stateRepaired?: StateRepaired; pinPaused?: boolean }>('/health'),
+  health: () => get<Health>('/health'),
   home: () => get<HomeResponse>(urls.home()),
-  search: (q: string) => get<{ results: MetaPreview[] }>(`/api/search?q=${enc(q)}`),
-  similar: (type: string, id: string) => get<{ title: string; reason?: string; genre?: string; items: MetaPreview[] }>(urls.similar(type, id)),
-  browse: (type: BrowseType, opts: { genre?: string; sort?: BrowseSort; page?: number; from?: number; to?: number }) => get<BrowseResponse>(`/api/browse?type=${type}${opts.genre ? `&genre=${enc(opts.genre)}` : ''}${opts.sort ? `&sort=${opts.sort}` : ''}${opts.page ? `&page=${opts.page}` : ''}${opts.from != null ? `&from=${opts.from}` : ''}${opts.to != null ? `&to=${opts.to}` : ''}`),
+  search: (q: string) => get<SearchResponse>(`/api/search?q=${enc(q)}`),
+  similar: (type: string, id: string) => get<SimilarRail>(urls.similar(type, id)),
+  browse: (type: BrowseType, opts: BrowseQuery) => get<BrowseResponse>(`/api/browse?type=${type}${opts.genre ? `&genre=${enc(opts.genre)}` : ''}${opts.sort ? `&sort=${opts.sort}` : ''}${opts.page ? `&page=${opts.page}` : ''}${opts.from != null ? `&from=${opts.from}` : ''}${opts.to != null ? `&to=${opts.to}` : ''}`),
   browseGenres: () => get<BrowseGenres>(urls.genres()),
   meta: (type: string, id: string) => get<MetaResponse>(urls.meta(type, id)),
   ratings: (type: string, id: string) => get<Ratings>(`/api/ratings/${type}/${enc(id)}`),
@@ -128,35 +113,35 @@ export const api = {
   /** A release played or cast from a source list, for the local pick log. Fire and forget. */
   logPick: (key: string, chosen: string, via: 'play' | 'cast') => post<unknown>('/api/picks', { key, chosen, via }).catch(() => undefined),
   /** What happened to that release in the player (seconds), for the same log. Fire and forget. */
-  logOutcome: (o: { videoId: string; chosen: string; outcome: PickOutcome; pos: number; watchedSec: number }) => post<unknown>('/api/picks/outcome', o).catch(() => undefined),
+  logOutcome: (o: PickOutcomeReport) => post<unknown>('/api/picks/outcome', o).catch(() => undefined),
   play: (r: PlayRequest) => post<PlayResponse>('/api/play', r),
-  hlsSeek: (sid: string, time: number) => post<{ url: string; sessionId: string; timeOffset: number }>(`/api/hls/${enc(sid)}/seek`, { time }),
-  hlsPing: (sid: string) => post<{ ok: boolean }>(`/api/hls/${enc(sid)}/ping`).catch(() => undefined),
+  hlsSeek: (sid: string, time: number) => post<HlsSeekResponse>(`/api/hls/${enc(sid)}/seek`, { time }),
+  hlsPing: (sid: string) => post<OkResponse>(`/api/hls/${enc(sid)}/ping`).catch(() => undefined),
   hlsClose: (sid: string) => del<unknown>(`/api/hls/${enc(sid)}`).catch(() => undefined),
   torrentStats: (h: string) => get<TorrentStats>(`/api/torrent/${h}/stats`),
-  torrentAdd: (magnet: string) => post<{ infoHash: string; name: string; files: TorrentFileInfo[] }>('/api/torrent/add', { magnet }),
-  credits: (p: { infoHash: string; fileIdx: number; videoId?: string; metaId?: string }) => get<{ at?: number; source: 'learned' | 'chapter' | 'subtitles' | 'none'; confidence: 'high' | 'medium' | 'low' | 'none' }>(`/api/credits?infoHash=${enc(p.infoHash)}&fileIdx=${p.fileIdx}${p.videoId ? `&videoId=${enc(p.videoId)}` : ''}${p.metaId ? `&metaId=${enc(p.metaId)}` : ''}`),
-  creditsLearn: (metaId: string, offset: number) => post<{ ok: boolean }>('/api/credits/learn', { metaId, offset }),
-  intro: (p: { infoHash: string; fileIdx: number; videoId?: string; metaId?: string }) => get<IntroWindow>(`/api/intro?infoHash=${enc(p.infoHash)}&fileIdx=${p.fileIdx}${p.videoId ? `&videoId=${enc(p.videoId)}` : ''}${p.metaId ? `&metaId=${enc(p.metaId)}` : ''}`),
-  introLearn: (p: { metaId: string; start: number; end: number; infoHash?: string; fileIdx?: number; videoId?: string }) => post<{ ok: boolean }>('/api/intro/learn', p),
-  subSync: (p: { id: string; infoHash: string; fileIdx: number; from: number }) => post<{ offsetMs: number; score: number }>('/api/subs/sync', p),
-  subs: (p: { type?: string; videoId?: string; infoHash?: string; fileIdx?: number }) => {
+  torrentAdd: (magnet: string) => post<TorrentAddResponse>('/api/torrent/add', { magnet }),
+  credits: (p: FileRef) => get<CreditsEstimate>(`/api/credits?infoHash=${enc(p.infoHash)}&fileIdx=${p.fileIdx}${p.videoId ? `&videoId=${enc(p.videoId)}` : ''}${p.metaId ? `&metaId=${enc(p.metaId)}` : ''}`),
+  creditsLearn: (metaId: string, offset: number) => post<OkResponse>('/api/credits/learn', { metaId, offset }),
+  intro: (p: FileRef) => get<IntroEstimate>(`/api/intro?infoHash=${enc(p.infoHash)}&fileIdx=${p.fileIdx}${p.videoId ? `&videoId=${enc(p.videoId)}` : ''}${p.metaId ? `&metaId=${enc(p.metaId)}` : ''}`),
+  introLearn: (p: IntroLearnRequest) => post<OkResponse>('/api/intro/learn', p),
+  subSync: (p: SubSyncRequest) => post<SubSyncResult>('/api/subs/sync', p),
+  subs: (p: SubsQuery) => {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries(p)) if (v !== undefined && v !== '') q.set(k, String(v));
-    return get<{ tracks: SubtitleTrack[] }>(`/api/subs?${q}`);
+    return get<SubsResponse>(`/api/subs?${q}`);
   },
   progress: (videoId: string) => get<Progress | null>(`/api/progress/${enc(videoId)}`),
-  removeProgress: (videoId: string) => del<{ ok: boolean }>(`/api/progress/${enc(videoId)}`),
-  putProgress: (p: Partial<Progress> & { videoId: string }) => put<Progress>(`/api/progress/${enc(p.videoId)}`, p),
-  beaconProgress: (p: Partial<Progress> & { videoId: string }) => {
+  removeProgress: (videoId: string) => del<OkResponse>(`/api/progress/${enc(videoId)}`),
+  putProgress: (p: ProgressPatch) => put<Progress>(`/api/progress/${enc(p.videoId)}`, p),
+  beaconProgress: (p: ProgressPatch) => {
     try { navigator.sendBeacon(`/api/progress/${enc(p.videoId)}`, new Blob([JSON.stringify(p)], { type: 'text/plain' })); } catch { /* ignore */ }
   },
   watchlist: () => get<MetaPreview[]>('/api/watchlist'),
   history: () => get<Progress[]>('/api/history'),
-  addWatchlist: (id: string, b: { type: MediaType; name: string; poster?: string }) => put<unknown>(`/api/watchlist/${enc(id)}`, b),
+  addWatchlist: (id: string, b: WatchlistAdd) => put<unknown>(`/api/watchlist/${enc(id)}`, b),
   removeWatchlist: (id: string) => del<unknown>(`/api/watchlist/${enc(id)}`),
-  following: () => get<{ id: string; name: string; poster?: string }[]>('/api/following'),
-  follow: (id: string, b: { name: string; poster?: string }) => put<unknown>(`/api/following/${enc(id)}`, b),
+  following: () => get<Followed[]>('/api/following'),
+  follow: (id: string, b: FollowAdd) => put<unknown>(`/api/following/${enc(id)}`, b),
   unfollow: (id: string) => del<unknown>(`/api/following/${enc(id)}`),
   castDevices: (refresh = false) => get<CastDevice[]>(`/api/cast/devices${refresh ? '?refresh=1' : ''}`),
   castStatus: () => get<CastStatus>('/api/cast/status'),
@@ -168,26 +153,26 @@ export const api = {
   castUpNext: (cancel: boolean) => post<CastStatus>('/api/cast/upnext', { cancel }),
   castStop: () => post<CastStatus>('/api/cast/stop'),
   castSeek: (time: number) => post<CastStatus>('/api/cast/seek', { time }),
-  castVolume: (b: { level?: number; muted?: boolean }) => post<CastStatus>('/api/cast/volume', b),
+  castVolume: (b: VolumeRequest) => post<CastStatus>('/api/cast/volume', b),
   castSubtitle: (subId: string | null, offsetMs?: number) => post<CastStatus>('/api/cast/subtitle', { subId, offsetMs }),
   castReceivers: (refresh = false) => get<ReceiverInfo[]>(`/api/cast/receivers${refresh ? '?refresh=1' : ''}`),
   castPower: (id: string, on: boolean) => post<ReceiverInfo | null>(`/api/cast/receivers/${encodeURIComponent(id)}/power`, { on }),
-  castReceiverCmd: (id: string, cmd: 'stop' | 'pause' | 'play' | 'volume' | 'seek', body?: { level?: number; muted?: boolean; time?: number }) => post<ReceiverInfo>(`/api/cast/receivers/${encodeURIComponent(id)}/${cmd}`, body || {}),
+  castReceiverCmd: (id: string, cmd: ReceiverCommand, body?: ReceiverCommandBody) => post<ReceiverInfo>(`/api/cast/receivers/${encodeURIComponent(id)}/${cmd}`, body || {}),
   castHistory: (id: string) => get<CastHistoryEntry[]>(`/api/cast/receivers/${encodeURIComponent(id)}/history`),
   castStopAll: () => post<ReceiverInfo[]>('/api/cast/stop-all'),
   castHandoff: () => post<CastHandoff | null>('/api/cast/handoff'),
   settings: () => get<Settings>('/api/settings'),
   putSettings: (s: Partial<Settings>) => put<Settings>('/api/settings', s),
-  dismissRecovered: () => post<{ ok: boolean }>('/api/recovered/dismiss'),
+  dismissRecovered: () => post<OkResponse>('/api/recovered/dismiss'),
   addons: () => get<AddonRow[]>('/api/addons'),
   addAddon: (url: string) => post<AddonInfo>('/api/addons', { url }),
   removeAddon: (url: string) => del<unknown>(`/api/addons?url=${enc(url)}`),
   downloads: () => get<DownloadInfo[]>('/api/downloads'),
-  addDownload: (b: { infoHash: string; fileIdx?: number; videoId?: string; metaId?: string; type?: MediaType; name?: string; poster?: string; background?: string }) => post<DownloadInfo[]>('/api/downloads', b),
+  addDownload: (b: DownloadRequest) => post<DownloadInfo[]>('/api/downloads', b),
   removeDownload: (key: string) => del<DownloadInfo[]>(`/api/downloads/${enc(key)}`),
   addonCatalog: () => get<CatalogEntry[]>('/api/addons/catalog'),
-  auth: (pin: string) => post<{ ok: boolean }>('/api/auth', { pin }),
-  restore: (data: unknown) => post<{ ok: boolean; progress: number; watchlist: number }>('/api/restore', data),
+  auth: (pin: string) => post<OkResponse>('/api/auth', { pin }),
+  restore: (data: unknown) => post<RestoreResult>('/api/restore', data),
   disk: () => get<DiskReport>('/api/disk'),
   clearCache: (infoHash?: string) => post<DiskReport>('/api/cache/clear', infoHash ? { infoHash } : {}),
 };

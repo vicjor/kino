@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Meta, MetaPreview, Progress, StreamsResponse, Source, Episode, CastDevice, Ratings } from '../../server/types.js';
+import type { Meta, MetaPreview, MetaResponse, Progress, StreamsResponse, Source, Episode, CastDevice, Ratings } from '../../server/types.js';
 import { episodeName } from '../../server/episode-name.js';
-import { api, cached, urls, type MetaResponse } from '../lib/api';
+import { api, cached, urls } from '../lib/api';
 import { resumePoint, isFinished, minutesLeft } from '../lib/progress';
 import { useRoute, navigate, playUrl } from '../lib/router';
 import { target } from '../lib/player-caps';

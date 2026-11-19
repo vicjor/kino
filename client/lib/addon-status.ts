@@ -1,4 +1,4 @@
-import type { AddonRow } from './api';
+import type { AddonRow } from '../../server/types.js';
 
 /** Kino installs these by itself (server DEFAULT_ADDONS). Subtitles only, so one that is down never explains missing streams. */
 export const BUNDLED_ADDONS = ['https://opensubtitles-v3.strem.io/manifest.json'];

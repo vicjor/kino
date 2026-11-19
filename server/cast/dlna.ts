@@ -20,7 +20,7 @@ import { parseVideoId } from '../meta.js';
 import { haEvent } from '../ha.js';
 import * as lg from './lg.js';
 import type { DecodeCaps } from '../score.js';
-import type { CastDevice, CastPlayRequest, CastStatus, ReceiverInfo, SubtitleTrack, MediaType } from '../types.js';
+import type { CastDevice, CastHandoff, CastPlayRequest, CastStatus, ReceiverInfo, SubtitleTrack, MediaType } from '../types.js';
 
 const log = logger('dlna');
 
@@ -714,6 +714,6 @@ export async function stop(haNotify = true, reason = 'stopped'): Promise<void> {
   publish();
 }
 export const _internal = { hms, secs, tag, esc, describe, renderers, known, asked, freshAsked, loadAsked };
-export function handoffInfo(): { videoId?: string; pos: number; infoHash: string; fileIdx: number; title: string; poster?: string } | null {
+export function handoffInfo(): CastHandoff | null {
   return cur ? { videoId: cur.req.videoId, pos: cur.pos, infoHash: cur.infoHash, fileIdx: cur.fileIdx, title: cur.req.title, poster: cur.req.poster } : null;
 }

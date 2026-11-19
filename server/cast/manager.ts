@@ -20,7 +20,7 @@ import { haEvent } from '../ha.js';
 import * as discovery from './discovery.js';
 import * as dlna from './dlna.js';
 import { CastSession, plainCastError, noAnswer, unreachable, type RawStatus } from './session.js';
-import type { CastPlayRequest, CastStatus, SubtitleTrack, PlayMode, Target } from '../types.js';
+import type { CastHandoff, CastPlayRequest, CastStatus, SubtitleTrack, PlayMode, Target } from '../types.js';
 import type { DecodeCaps } from '../score.js';
 import { shouldNudge } from './keepawake.js';
 
@@ -564,7 +564,7 @@ export async function stop(haNotify = true): Promise<void> {
 }
 
 /** Stop casting and return where playback was, so a phone can pick it up. */
-export async function handoff(): Promise<{ videoId?: string; pos: number; infoHash: string; fileIdx: number; title: string; poster?: string } | null> {
+export async function handoff(): Promise<CastHandoff | null> {
   if (dlna.active()) { const h = dlna.handoffInfo(); await dlna.stop(); return h; }
   const c = cur;
   if (!c) return null;

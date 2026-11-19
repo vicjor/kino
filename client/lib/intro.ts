@@ -1,5 +1,7 @@
+import type { IntroEstimate } from '../../server/types.js';
+
 /** Skip intro, the client half: when to show the button, and telling a skip over the titles from any other jump. */
-export interface IntroWindow { start?: number; end?: number; source: 'chapter' | 'subtitles' | 'learned' | 'none'; confidence: 'high' | 'medium' | 'low' | 'none' }
+
 /** A run of forward jumps close together in time: three taps on +10 s is one skip of thirty. */
 export interface Jump { from: number; to: number; at: number }
 
@@ -8,7 +10,7 @@ export const JUMP_GAP_MS = 4000;
 const BY = 15 * 60, MIN = 15, MAX = 180;
 
 /** The button shows from the start of the titles until a few seconds before they end. */
-export function inIntro(w: IntroWindow | null | undefined, t: number): boolean {
+export function inIntro(w: IntroEstimate | null | undefined, t: number): boolean {
   return !!w && w.confidence !== 'none' && w.start != null && w.end != null && t >= w.start - 1 && t < w.end - 3;
 }
 

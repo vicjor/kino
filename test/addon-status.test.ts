@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { streamSource, downCallout, BUNDLED_ADDONS } from '../client/lib/addon-status.ts';
 import { DEFAULT_ADDONS } from '../server/config.ts';
-import type { AddonRow } from '../client/lib/api.ts';
+import type { AddonRow } from '../server/types.ts';
 
 const SUBS: AddonRow = { url: BUNDLED_ADDONS[0], name: 'Subtitles', resources: ['subtitles'], types: ['movie', 'series'], ok: true };
 const STREAMS: AddonRow = { url: 'https://streams.example.com/abc/manifest.json', name: 'My streams', resources: ['stream'], types: ['movie', 'series'], ok: true };

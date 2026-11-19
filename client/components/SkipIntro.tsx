@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { useStore, setStore, toast } from '../lib/store';
-import { inIntro, trackJump, learnable, JUMP_GAP_MS, type IntroWindow, type Jump } from '../lib/intro';
+import { inIntro, trackJump, learnable, JUMP_GAP_MS, type Jump } from '../lib/intro';
 import { castingEpisode, metaIdOf } from '../lib/handoff';
-import type { CastStatus } from '../../server/types.js';
+import type { CastStatus, IntroEstimate } from '../../server/types.js';
 import '../styles/upnext.css';
 
 export interface IntroQuery { infoHash: string; fileIdx: number; videoId?: string; metaId: string }
 const keyOf = (q: IntroQuery | null) => (q ? `${q.infoHash}:${q.fileIdx}:${q.videoId || ''}` : '');
 
 /** Where the opening titles sit in the file playing now, asked once per file. */
-export function useIntro(q: IntroQuery | null): IntroWindow | null {
-  const [w, setW] = useState<IntroWindow | null>(null);
+export function useIntro(q: IntroQuery | null): IntroEstimate | null {
+  const [w, setW] = useState<IntroEstimate | null>(null);
   const k = keyOf(q);
   useEffect(() => {
     setW(null);

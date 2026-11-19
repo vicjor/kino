@@ -1,5 +1,4 @@
-import type { CastStatus, MediaType } from '../../server/types.js';
-import type { CastHandoff } from './api';
+import type { CastHandoff, CastStatus, MediaType } from '../../server/types.js';
 import type { PlayParams } from './router';
 
 /** A file played from a magnet link: `magnet:<hash>:<idx>`. It has no title page and no addon metadata. */

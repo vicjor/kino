@@ -8,7 +8,7 @@ import * as meta from './meta.js';
 import * as tmdb from './tmdb.js';
 import { imdbIndex } from './ratings.js';
 import { seeds, genreTaste, seriesShare, dominantLanguage, dayIndex, rotate, seedReason, finishRows, interleave, shelfNoise, rankByImdb, withImdb, imdbFloor, hiddenGems, GENERIC, type Seed } from './taste.js';
-import type { MediaType, MetaPreview, DiscoverRow, BrowseType, BrowseSort, BrowseResponse, BrowseGenres } from './types.js';
+import type { MediaType, MetaPreview, SimilarRail, DiscoverRow, BrowseType, BrowseSort, BrowseResponse, BrowseGenres } from './types.js';
 import { inYears, yearDates, type Years } from './years.js';
 
 const log = logger('discover');
@@ -186,7 +186,7 @@ export function warm(): void { homeRows().catch((e) => log.debug('warm failed', 
 
 // ---------------------------------------------------------------- similar --
 /** "More like this" on a title page: co-watch recommendations first, the genre shelf when TMDB has nothing. */
-export async function similar(type: MediaType, id: string): Promise<{ title: string; reason?: string; genre?: string; items: MetaPreview[] }> {
+export async function similar(type: MediaType, id: string): Promise<SimilarRail> {
   const key = getState().settings.tmdbApiKey;
   const self = (x: MetaPreview) => x.id !== id;
   if (key) {

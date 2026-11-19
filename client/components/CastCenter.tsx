@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as RPointerEvent, type MouseEvent as RMouseEvent } from 'react';
-import type { ReceiverInfo, CastHistoryEntry, SubtitleTrack } from '../../server/types.js';
+import type { ReceiverInfo, CastHistoryEntry, SubtitleTrack, ReceiverCommand, ReceiverCommandBody } from '../../server/types.js';
 import { api } from '../lib/api';
 import { resumePoint } from '../lib/progress';
 import { useStore, setStore, toast } from '../lib/store';
@@ -33,8 +33,8 @@ export function openDeviceController(id: string, from?: DOMRect | null): void {
 const OUT_MS = 280;
 const ZOOM_MS = 450;
 const ZOOM_OUT_MS = 280;
-type Cmd = 'stop' | 'pause' | 'play' | 'volume' | 'seek';
-type Body = { level?: number; muted?: boolean; time?: number };
+type Cmd = ReceiverCommand;
+type Body = ReceiverCommandBody;
 type CmdFn = (id: string, c: Cmd, body?: Body) => Promise<void>;
 /** A side sheet over the controller (rendered outside the zooming panel so `position: fixed` still means the viewport). */
 type SheetKind = null | 'sources' | 'keys';

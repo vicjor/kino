@@ -5,8 +5,9 @@ import { probe } from './probe.js';
 import { localFileUrl } from './range.js';
 import { listSubtitles, getVtt } from '../subs/index.js';
 import { parseVtt } from '../subs/srt2vtt.js';
-import { estimateCredits, type CreditsEstimate } from './credits.js';
-import { estimateIntro, anchorFor, dialogue, pushIntro, type IntroEstimate, type IntroSample } from './intro.js';
+import { estimateCredits } from './credits.js';
+import { estimateIntro, anchorFor, dialogue, pushIntro, type IntroSample } from './intro.js';
+import type { CreditsEstimate, FileRef, IntroEstimate } from '../types.js';
 
 const log = logger('credits');
 
@@ -30,7 +31,7 @@ async function subtitleLines(t: Awaited<ReturnType<typeof torrent.ensure>>, vide
  * The subtitle read is the slow part (an OpenSubtitles fetch), so callers ask once playback is running.
  * Shared by the browser player (GET /api/credits) and the cast up-next engine.
  */
-export async function creditsFor(p: { infoHash: string; fileIdx: number; videoId?: string; metaId?: string }): Promise<CreditsEstimate> {
+export async function creditsFor(p: FileRef): Promise<CreditsEstimate> {
   const t = torrent.getTorrent(p.infoHash) || (await torrent.ensure(p.infoHash));
   const info = await probe(`${t.infoHash}:${p.fileIdx}`, localFileUrl(t.infoHash, p.fileIdx));
   const lines = await subtitleLines(t, p.videoId, p.fileIdx);
@@ -39,7 +40,7 @@ export async function creditsFor(p: { infoHash: string; fileIdx: number; videoId
 }
 
 /** Where the opening titles sit in this file: a chapter, or a window you skipped in an earlier episode found again. */
-export async function introFor(p: { infoHash: string; fileIdx: number; videoId?: string; metaId?: string }): Promise<IntroEstimate> {
+export async function introFor(p: FileRef): Promise<IntroEstimate> {
   const t = torrent.getTorrent(p.infoHash) || (await torrent.ensure(p.infoHash));
   const info = await probe(`${t.infoHash}:${p.fileIdx}`, localFileUrl(t.infoHash, p.fileIdx));
   const samples = p.metaId ? getState().intros[p.metaId] : undefined;

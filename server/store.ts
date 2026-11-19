@@ -8,7 +8,7 @@ import { isFinished, isMarkedWatched } from './taste.js';
 import { CAST_HISTORY_CAP, sanitizeSettings, isProgress, isListEntry, isCastEntry, isIntro } from './settings.js';
 import { parseVideoId } from './meta.js';
 import { episodeName } from './episode-name.js';
-import type { Progress, Settings, CastHistoryEntry, Download } from './types.js';
+import type { Progress, Settings, CastHistoryEntry, Download, StateRecovered, StateRepaired } from './types.js';
 import type { IntroSample } from './media/intro.js';
 
 const log = logger('store');
@@ -185,19 +185,15 @@ let recovered: CorruptRecovery | undefined;
 /** Set by a load that had to start fresh, for /health or the client to tell you once; cleared by the next load or dismissRecovered. */
 export function recoveredFromCorrupt(): CorruptRecovery | undefined { return recovered; }
 /** The same for the unlocked /health: where the old file went (when it could be moved) and when, until dismissed. */
-export function recoveryNotice(): { movedTo?: string; at: number } | undefined { return recovered && { movedTo: recovered.movedTo, at: recovered.at }; }
+export function recoveryNotice(): StateRecovered | undefined { return recovered && { movedTo: recovered.movedTo, at: recovered.at }; }
 /** Clears both notices: a load sets one at most (a fresh start repairs and prunes nothing). */
 export function dismissRecovered(): void { recovered = undefined; repaired = undefined; }
 
-/**
- * The last load repaired the state and wrote it back: how many top-level fields it repaired, progress entries it left
- * out as unreadable, short progress and receivers' cast history it pruned along the way, and where the bytes from before went.
- */
-export interface RepairNotice { repairedFields: number; droppedProgress: number; prunedProgress: number; prunedCastDevices: number; backup?: string; at: number }
-type RepairCounts = Omit<RepairNotice, 'backup' | 'at'>;
-let repaired: RepairNotice | undefined;
+/** The last load repaired the state and wrote it back (StateRepaired in types.ts). */
+type RepairCounts = Omit<StateRepaired, 'backup' | 'at'>;
+let repaired: StateRepaired | undefined;
 /** For /health to say once, like recoveryNotice; cleared by the next load or dismissRecovered. */
-export function repairNotice(): RepairNotice | undefined { return repaired; }
+export function repairNotice(): StateRepaired | undefined { return repaired; }
 /** What a load repaired and pruned, or undefined when it did neither. Pure. */
 export function repairCounts(n: Pick<Normalized, 'fields' | 'droppedProgress'>, pruned: { progress: number; castDevices: number }): RepairCounts | undefined {
   const c = { repairedFields: n.fields.length, droppedProgress: n.droppedProgress, prunedProgress: pruned.progress, prunedCastDevices: pruned.castDevices };

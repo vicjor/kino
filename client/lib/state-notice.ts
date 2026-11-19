@@ -1,4 +1,4 @@
-import type { StateRepaired } from './api';
+import type { StateRepaired } from '../../server/types.js';
 
 /** The last part of a path the server sent, on any platform. */
 export const fileName = (p: string) => p.split(/[\\/]/).pop() || p;
