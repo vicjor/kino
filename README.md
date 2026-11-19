@@ -246,6 +246,9 @@ client/            Vite + React 19, hand-written CSS, PWA (no UI library)
   App.tsx main.tsx hash-routed shell, lazy-loaded screens
   screens/         Home, Search, Browse, Library, Title, Player, Settings, Magnet, Onboarding;
                    Player has two halves: playing here, or TvRemote (tv=true in the link: the TV's remote, same look)
+  screens/player/  the half that plays here, one hook per job: useSession (play request, retries, teardown), useMedia
+                   (video events, seeking, stall and slow nudges), useSubtitles, useEpisodes, useProgress, useControls
+                   (keys, fullscreen, PiP, volume), and PlayerChrome (notice, error, loading, sheets)
   components/      Dock, Card, Row, SourceList, CastCenter, CastPicker, Controls, Scrubber, PlayOn (where it plays),
                    EpisodesShelf, Shortcuts, CommandPalette, ...
                    plus pure helpers with tests: home-data, moods, source-tags
@@ -255,7 +258,7 @@ client/            Vite + React 19, hand-written CSS, PWA (no UI library)
                    builders, no DOM), episodes, tvs, keys (g chords), cast-actions (send to TV, play here), cast-volume,
                    cast-keys (the TV's keys, for the Cast Center and CastHotkeys),
                    spring (damping and response springs, momentum projection), paging, zoom (poster to title), tilt, years,
-                   scrub (iOS scrubbing speeds), devices ("This iPhone")
+                   scrub (iOS scrubbing speeds), devices ("This iPhone"), playback (the player's pure decisions)
   styles/          one CSS file per screen or component
   public/          web manifest, service worker, icons
 desktop/           Electron wrapper: window, tray, embedded server (main.cjs), updater (updater.cjs)

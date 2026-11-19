@@ -11,6 +11,7 @@ import { nextSource } from '../../server/next-source.js';
 import { sendToTv, type Tv } from '../lib/cast-actions';
 import { isTouch } from '../lib/player-caps';
 import { inIntro } from '../lib/intro';
+import { switchWords, noEpisodeSourceWords } from '../lib/playback';
 import { splitShowName } from '../components/home-data';
 import { Scrubber } from '../components/Scrubber';
 import { LevelSlider } from '../components/LevelSlider';
@@ -160,7 +161,7 @@ export function TvRemote({ p }: { p: PlayParams }) {
       const tgt = device?.kind === 'dlna' ? 'browser' : 'chromecast';
       const r = await api.streams('series', e.id, tgt);
       const src = nextSource(r.sources, r.auto, { infoHash: cast.infoHash, bingeGroup: sessionStorage.getItem('kino.binge') });
-      if (!src) throw new Error(r.sources.length ? 'No good source found for that episode' : 'No sources for that episode');
+      if (!src) throw new Error(noEpisodeSourceWords(r.sources.length > 0));
       const prog = await api.progress(e.id).catch(() => null);
       toast(`S${e.season} E${e.episode} on its way to ${tvName}`);
       return api.castPlay({ deviceId: cast.deviceId!, infoHash: src.infoHash, fileIdx: src.fileIdx ?? -1, videoId: e.id, title: `${meta.name} S${e.season} E${e.episode} ${e.title || ''}`.trim(), poster: meta.poster, startTime: resumePoint(prog) ?? 0 });
@@ -173,7 +174,7 @@ export function TvRemote({ p }: { p: PlayParams }) {
   };
   const switchTo = (s: Source) => {
     setSheet(null);
-    toast(`Switching to ${s.provider || s.addon}${s.resolution && s.resolution !== 'other' ? ` ${s.resolution}` : ''} on ${tvName}`);
+    toast(`${switchWords(s)} on ${tvName}`);
     void run(() => api.castSource(s.infoHash, s.fileIdx));
   };
   const sub = (id: string | null, ms?: number) => run(() => api.castSubtitle(id, ms));

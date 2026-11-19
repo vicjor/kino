@@ -10,7 +10,7 @@ import path from 'node:path';
 const CLIENT = path.resolve(import.meta.dirname, '..', 'client');
 
 /** TODO: files another session owns, still holding an unnamed spinner. The staleness test says when one is clean. */
-const ALLOW = new Set(['App.tsx', 'screens/Player.tsx']);
+const ALLOW = new Set(['App.tsx', 'screens/player/PlayerChrome.tsx']);
 
 /** `file: tag` for every spinner without role="status" and an aria-label. */
 function unnamedSpinners(file: string, src: string): string[] {
