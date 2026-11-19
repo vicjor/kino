@@ -96,12 +96,15 @@ export function summarize(ranks: (number | undefined)[]): Summary {
   return { n: r.length, top1: r.filter((x) => x === 1).length, top3: r.filter((x) => x <= 3).length, meanRank: r.length ? r.reduce((a, b) => a + b, 0) / r.length : 0 };
 }
 
-/** picks.jsonl lines (server/picks.ts) as cases. A line that does not parse is skipped. */
+/** Pick lines the owner chose (server/picks.ts Via); a line from before `via` came in was one. Kino's own picks only learn outcomes. */
+const ownersPick = (via: unknown) => via == null || via === 'play' || via === 'cast';
+/** picks.jsonl lines (server/picks.ts) as cases: the owner's picks only. A line that does not parse is skipped. */
 export function readPicks(text: string): PickCase[] {
   return text.split('\n').filter(Boolean).flatMap((l): PickCase[] => {
     try {
-      const p = JSON.parse(l) as { videoId: string; type: MediaType; target: Target; caps?: DecodeCaps; runtimeSec?: number; auto?: string; chosen: string; sources: Source[] };
+      const p = JSON.parse(l) as { videoId: string; type: MediaType; target: Target; caps?: DecodeCaps; runtimeSec?: number; auto?: string; chosen: string; via?: string; sources: Source[] };
       if (!Array.isArray(p.sources)) return [];   // an outcome line (tallyOutcomes)
+      if (!ownersPick(p.via)) return [];   // Kino chose it (auto-next): agreeing with itself measures nothing
       return [{ videoId: p.videoId, type: p.type, target: p.target, ...(p.caps && { caps: p.caps }), how: 'log', runtimeSec: p.runtimeSec, autoThen: p.auto, chosen: chosenOf(p.chosen), sources: p.sources.map((s) => ({ ...s, score: 0, warnings: [] })) }];
     } catch { return []; }
   });

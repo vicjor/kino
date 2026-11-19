@@ -7,7 +7,7 @@ import { metaIdOf, isMagnetId, episodeOf, handoffPlayParams } from '../lib/hando
 import { resumePoint } from '../lib/progress';
 import { fmtTime, langName, skipLabel } from '../lib/format';
 import { tvVolume, setTvVolume, stepVolume } from '../lib/cast-volume';
-import { episodeSource } from '../lib/episodes';
+import { nextSource } from '../../server/next-source.js';
 import { sendToTv, type Tv } from '../lib/cast-actions';
 import { isTouch } from '../lib/player-caps';
 import { inIntro } from '../lib/intro';
@@ -159,8 +159,8 @@ export function TvRemote({ p }: { p: PlayParams }) {
     await run(async () => {
       const tgt = device?.kind === 'dlna' ? 'browser' : 'chromecast';
       const r = await api.streams('series', e.id, tgt);
-      const src = episodeSource(r.sources, r.auto, sessionStorage.getItem('kino.binge'));
-      if (!src) throw new Error('No sources for that episode');
+      const src = nextSource(r.sources, r.auto, { infoHash: cast.infoHash, bingeGroup: sessionStorage.getItem('kino.binge') });
+      if (!src) throw new Error(r.sources.length ? 'No good source found for that episode' : 'No sources for that episode');
       const prog = await api.progress(e.id).catch(() => null);
       toast(`S${e.season} E${e.episode} on its way to ${tvName}`);
       return api.castPlay({ deviceId: cast.deviceId!, infoHash: src.infoHash, fileIdx: src.fileIdx ?? -1, videoId: e.id, title: `${meta.name} S${e.season} E${e.episode} ${e.title || ''}`.trim(), poster: meta.poster, startTime: resumePoint(prog) ?? 0 });

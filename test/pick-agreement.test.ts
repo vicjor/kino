@@ -43,6 +43,8 @@ test('readPicks: picks.jsonl lines as cases; a broken line is skipped', () => {
   assert.deepEqual(c.sources[0].warnings, []);
   const [withCaps] = readPicks(JSON.stringify({ ...line, caps: { hevc: true } }));
   assert.deepEqual(withCaps.caps, { hevc: true });
+  assert.equal(readPicks(JSON.stringify({ ...line, via: undefined })).length, 1, 'a line from before `via` was the owner\'s');
+  assert.equal(readPicks(JSON.stringify({ ...line, via: 'auto-next' })).length, 0, 'Kino\'s own pick is not a case');
 });
 
 test('judge: ranks with the codecs the browser said it decodes', () => {

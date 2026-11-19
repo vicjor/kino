@@ -215,6 +215,7 @@ server/            Express API and everything behind it (TypeScript, ESM)
   parse.ts         release names into structured sources
   score.ts         rank sources per target device: streams without stopping first, then quality
   rank.ts          the one ranking path (source list and TV auto-next): live seeders, running time, score.ts
+  next-source.ts   the next episode's release, browser and TV alike: same pack, same binge group, else the pick
   picks.ts         local log of sources played from a list and what became of them (picks.jsonl), to tune score.ts on
   scrape.ts        seeders counted on the trackers
   torrent.ts       one webtorrent client, one selected file at a time, LRU cache

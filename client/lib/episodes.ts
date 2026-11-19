@@ -1,4 +1,4 @@
-import type { Episode, Progress, Source } from '../../server/types.js';
+import type { Episode, Progress } from '../../server/types.js';
 import { isFinished } from './progress.js';
 
 /** Season numbers in order, specials (season 0) last. */
@@ -47,12 +47,4 @@ export function caughtUp(videos: Episode[], progress: Record<string, Progress>, 
   const later = eps.slice(eps.findIndex((e) => e.id === pick.id) + 1);
   if (later.some((e) => isReleased(e, now))) return null;
   return { upcoming: later[0] };
-}
-
-/**
- * The release to play an episode from: the same group as the episode before it (a binge keeps one release, so the
- * intro, the subtitles and the quality stay the same), else the one Kino picked, else the first.
- */
-export function episodeSource(sources: Source[], auto?: string, binge?: string | null): Source | undefined {
-  return (binge ? sources.find((s) => s.bingeGroup === binge) : undefined) || sources.find((s) => s.id === auto) || sources[0];
 }

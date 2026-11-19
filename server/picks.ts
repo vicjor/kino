@@ -31,7 +31,7 @@ const VERSION = 2;
 /** How long after a pick the player's trouble still counts as the pick's outcome. */
 export const OUTCOME_HOURS = 12;
 
-interface Offer { videoId: string; type: MediaType; target: Target; caps?: DecodeCaps; runtimeSec?: number; auto?: string; sources: Source[] }
+export interface Offer { videoId: string; type: MediaType; target: Target; caps?: DecodeCaps; runtimeSec?: number; auto?: string; sources: Source[] }
 const offers = new Map<string, Offer>();
 
 /** Remember a ranked streams answer; the key goes to the client with it. */
@@ -55,8 +55,13 @@ export function features(s: Source): Partial<Source> {
   return out as Partial<Source>;
 }
 
+/**
+ * Who picked and how: `play` and `cast` from a source list (the owner's choice), `auto-next` a TV's own pick of the
+ * next episode (cast/manager.ts). Only the owner's choices measure the automatic pick; the rest learn outcomes.
+ */
+export type Via = 'play' | 'cast' | 'auto-next';
 /** The line for a pick from a remembered answer, or undefined when the key or the release is unknown. */
-export function pickLine(o: Offer, chosen: string, via: 'play' | 'cast', now = Date.now()): string | undefined {
+export function pickLine(o: Offer, chosen: string, via: Via, now = Date.now()): string | undefined {
   const pick = o.sources.find((s) => s.id === chosen);
   if (!pick) return undefined;
   const list = o.sources.slice(0, MAX_CANDIDATES);
@@ -101,10 +106,15 @@ const logged = new Map<string, { t: number; seen: Set<PickOutcome> }>();
 const pickId = (videoId: string, chosen: string) => `${videoId}|${chosen}`;
 
 /** Log one pick from the source list. False when Kino no longer remembers that list or the release is not on it. */
-export function record(key: string, chosen: string, via: 'play' | 'cast', file = PICKS_FILE, now = Date.now()): boolean {
+export function record(key: string, chosen: string, via: Via, file = PICKS_FILE, now = Date.now()): boolean {
   const o = offers.get(key);
-  const line = o && pickLine(o, chosen, via, now);
-  if (!o || !line || !append(line, file)) return false;
+  return !!o && logPick(o, chosen, via, file, now);
+}
+
+/** Log a pick Kino made from a ranking it holds (auto-next): the same line a list pick writes. */
+export function logPick(o: Offer, chosen: string, via: Via, file = PICKS_FILE, now = Date.now()): boolean {
+  const line = pickLine(o, chosen, via, now);
+  if (!line || !append(line, file)) return false;
   const id = pickId(o.videoId, chosen);
   logged.delete(id); logged.set(id, { t: now, seen: new Set() });
   while (logged.size > KEEP) logged.delete(logged.keys().next().value!);

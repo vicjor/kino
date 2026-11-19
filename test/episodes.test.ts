@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { seasonsOf, sortedEpisodes, isReleased, nextUp, caughtUp, episodeSource } from '../client/lib/episodes.js';
-import type { Episode, Progress, Source } from '../server/types.js';
+import { seasonsOf, sortedEpisodes, isReleased, nextUp, caughtUp } from '../client/lib/episodes.js';
+import type { Episode, Progress } from '../server/types.js';
 
 const NOW = Date.parse('2026-10-01T12:00:00Z');
 const DAY = 86_400_000;
@@ -97,13 +97,4 @@ test('caughtUp: null when there is something to watch', () => {
   assert.equal(nextUp(s3, progress, NOW)?.id, 'tt1:3:2');
   assert.equal(caughtUp(s3, progress, NOW), null);
   assert.equal(caughtUp([], {}, NOW), null);
-});
-
-test('episodeSource: the binge group first, then the one Kino picked, then the first', () => {
-  const src = (id: string, bingeGroup?: string) => ({ id, infoHash: id, addon: 'a', releaseName: id, bingeGroup }) as Source;
-  const list = [src('a'), src('b', 'grp'), src('c')];
-  assert.equal(episodeSource(list, 'c', 'grp')?.id, 'b');
-  assert.equal(episodeSource(list, 'c', 'other')?.id, 'c');
-  assert.equal(episodeSource(list, undefined, null)?.id, 'a');
-  assert.equal(episodeSource([], 'c'), undefined);
 });

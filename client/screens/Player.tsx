@@ -14,7 +14,7 @@ import { PlayOn } from '../components/PlayOn';
 import { EpisodesShelf } from '../components/EpisodesShelf';
 import { usePullDown } from '../components/usePullDown';
 import { splitShowName } from '../components/home-data';
-import { episodeSource } from '../lib/episodes';
+import { nextSource } from '../../server/next-source.js';
 import { TvRemote } from './TvRemote';
 import { TorrentStats } from '../components/TorrentStats';
 import { Countdown } from '../components/Countdown';
@@ -389,13 +389,13 @@ function LocalPlayer() {
     if (opts.next && opts.manual !== false && !p.magnet && d && d - at > 10 && d - at < 20 * 60) api.creditsLearn(p.metaId, d - at).catch(() => undefined);
     try {
       const r = await api.streams('series', ep.id, target());
-      const src = episodeSource(r.sources, r.auto, sessionStorage.getItem('kino.binge'));
-      if (!src) { toast(opts.next ? 'No sources for the next episode' : 'No sources for that episode', 'error'); navigate(titleUrl('series', p.metaId, ep.id)); return; }
+      const src = nextSource(r.sources, r.auto, { infoHash: p.infoHash, bingeGroup: sessionStorage.getItem('kino.binge') });
+      if (!src) { toast(`No ${r.sources.length ? 'good source found' : 'sources'} for ${opts.next ? 'the next' : 'that'} episode`, 'error'); navigate(titleUrl('series', p.metaId, ep.id)); return; }
       if (opts.next) movedOn.current = true;
       saveRef.current();
       navigate(playUrl({ type: 'series', videoId: ep.id, metaId: p.metaId, infoHash: src.infoHash, fileIdx: src.fileIdx, name: `${meta.name} S${ep.season} E${ep.episode} ${ep.title || ''}`.trim(), poster: meta.poster, background: ep.thumbnail || meta.background, season: ep.season, episode: ep.episode, t: opts.next ? 0 : undefined }), true);
     } catch (e) { toast((e as Error).message, 'error'); }
-  }, [meta, p.metaId, p.magnet, totalDur, absTime]);
+  }, [meta, p.metaId, p.infoHash, p.magnet, totalDur, absTime]);
   const playNext = useCallback(async (manual = true) => { if (next) await playEpisode(next, { next: true, manual }); }, [next, playEpisode]);
   // Ask for the credits estimate once playback runs and there is a next episode to go to.
   useEffect(() => {

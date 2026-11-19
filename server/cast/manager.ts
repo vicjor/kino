@@ -16,6 +16,8 @@ import { meta as getMeta, nextEpisode, parseVideoId, runtimeSeconds } from '../m
 import { episodeName } from '../episode-name.js';
 import { getStreams } from '../addons.js';
 import { rankLive } from '../rank.js';
+import { nextSource, type PlayedFrom } from '../next-source.js';
+import * as picks from '../picks.js';
 import { haEvent } from '../ha.js';
 import * as discovery from './discovery.js';
 import * as dlna from './dlna.js';
@@ -249,19 +251,34 @@ async function autoNext(videoId: string | undefined, deviceId: string, subLang: 
     if (gone()) return 'done';
     const next = nextEpisode(m, videoId);
     if (!next) return 'none';
-    const { sources } = await io.streams('series', next.id);
+    const [{ sources }, from] = await Promise.all([io.streams('series', next.id), playedFrom(videoId)]);
     if (gone()) return 'done';
     // Ranked as the source list ranks it: live seeders, and the show's running time from the meta just fetched.
     const { target: tg, caps } = rankAs(deviceId);
-    const { auto: pick } = await rankLive(sources, tg, 'series', { runtimeSec: runtimeSeconds(m.runtime), caps });
+    const runtimeSec = runtimeSeconds(m.runtime);
+    const { ranked, auto } = await rankLive(sources, tg, 'series', { runtimeSec, caps });
     if (gone()) return 'done';
+    // The same pack or binge group as this episode, as the browser player goes on (next-source.ts).
+    const pick = nextSource(ranked, auto?.id, from);
     if (!pick) { log.info('auto-next: no good source', { next: next.id, sources: sources.length }); return sources.length ? 'no-source' : 'none'; }
-    log.info('auto-next', { next: next.id, source: pick.releaseName, device: deviceId });
+    log.info('auto-next', { next: next.id, source: pick.releaseName, device: deviceId, same: pick.infoHash === from.infoHash ? 'pack' : from.bingeGroup && pick.bingeGroup === from.bingeGroup ? 'group' : undefined });
+    picks.logPick({ videoId: next.id, type: 'series', target: tg, caps, runtimeSec, auto: auto?.id, sources: ranked }, pick.id, 'auto-next');
     await castTo({ deviceId, infoHash: pick.infoHash, fileIdx: pick.fileIdx ?? -1, videoId: next.id, title: episodeName(m.name, next.season, next.episode, next.title), poster: m.poster, startTime: 0, subId: undefined, subOffsetMs }, subLang ? { preferLang: subLang } : {});
     // After the switch: ending the old session saved where it was (the credits), and this must win over that.
     markWatched(videoId);
     return 'done';
   } catch (e) { if (force) throw e; log.warn('auto-next failed', { err: errMsg(e) }); return 'none'; }
+}
+
+/**
+ * The release this episode played from (its saved progress names it, whichever transport played it) and that
+ * release's binge group, looked up in the episode's own sources (the addons' cache answers). Empty when unknown.
+ */
+async function playedFrom(videoId: string): Promise<PlayedFrom> {
+  const infoHash = getProgress(videoId)?.infoHash;
+  if (!infoHash) return {};
+  const { sources } = await io.streams('series', videoId).catch(() => ({ sources: [] }));
+  return { infoHash, bingeGroup: sources.find((s) => s.infoHash === infoHash)?.bingeGroup };
 }
 
 /**

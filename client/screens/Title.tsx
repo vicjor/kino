@@ -12,7 +12,8 @@ import { scrollBehavior } from '../lib/motion';
 import { TopBar } from '../components/TopBar';
 import { SourceList } from '../components/SourceList';
 import { EpisodePicker } from '../components/EpisodePicker';
-import { nextUp, caughtUp, isReleased, sortedEpisodes, episodeSource } from '../lib/episodes';
+import { nextUp, caughtUp, isReleased, sortedEpisodes } from '../lib/episodes';
+import { nextSource } from '../../server/next-source.js';
 import { airLabel } from '../components/home-data';
 import { Row } from '../components/Row';
 import { MetaCard } from '../components/Card';
@@ -149,7 +150,7 @@ export function Title() {
     const p = progress[e.id];
     let binge: string | null = null;
     try { binge = sessionStorage.getItem('kino.binge'); } catch { /* ignore */ }
-    return (p?.infoHash != null ? r.sources.find((s) => s.infoHash === p.infoHash && (s.fileIdx ?? 0) === (p.fileIdx ?? 0)) : undefined) || episodeSource(r.sources, r.auto, binge);
+    return (p?.infoHash != null ? r.sources.find((s) => s.infoHash === p.infoHash && (s.fileIdx ?? 0) === (p.fileIdx ?? 0)) : undefined) || nextSource(r.sources, r.auto, { bingeGroup: binge });
   };
   const castEpisode = async (e: Episode) => {
     if (e.id === videoId) { castNow(); return; }
@@ -159,12 +160,12 @@ export function Title() {
       // Straight to the one TV, inside the tap (sendToTv arms the lock-screen remote before the sources are asked).
       await sendToTv(onlyTv, async (deviceId) => {
         const s = await sourceFor(e);
-        if (!s) throw new Error(`No sources for ${name}`);
+        if (!s) throw new Error(`No good source found for ${name}`);
         await startOn(deviceId, s, e);
       }, `${resumePoint(progress[e.id]) != null ? 'Continuing' : 'Casting'} ${name} on ${onlyTv.name}`);
       return;
     }
-    try { const s = await sourceFor(e); if (s) setCastSrc(s); else toast(`No sources for ${name}`); }
+    try { const s = await sourceFor(e); if (s) setCastSrc(s); else toast(`No good source found for ${name}`); }
     catch (err) { toast((err as Error).message, 'error'); }
   };
   const toggleWatchlist = async () => {

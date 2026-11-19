@@ -465,6 +465,22 @@ test('Next on the TV picks as the source list does: live seeders, and the show\'
   assert.equal(await next(pair(), '20 min'), 'small');
 });
 
+test('Next on the TV keeps the pack this episode played from, as the browser does, and logs its pick', { timeout: 5000 }, async () => {
+  saveProgress({ videoId: 'tt5:1:1', metaId: 'tt5', type: 'series', pos: 100, dur: 1440, updatedAt: 1, name: 'Show S1 E1 One', season: 1, episode: 1, infoHash: 'pack', fileIdx: 0 });
+  const tv = await playing({ videoId: 'tt5:1:1', infoHash: 'pack' }, 100);
+  io.meta = async () => show;
+  const pack = (fileIdx: number): Source => ({ ...source('pack'), id: `pack:${fileIdx}`, fileIdx, bingeGroup: 'g1' });
+  io.streams = async (_t, id) => ({ sources: id === 'tt5:1:1' ? [pack(0)] : [{ ...source('best'), seeders: 900 }, pack(1)], queried: [], failed: [] });
+  const p = cast.castNext();
+  await flush(); started.at(-1)!.ready(); await flush();
+  tv.loads.at(-1)!.resolve();
+  const s = await p; await cast.stop(false);
+  assert.equal(s.infoHash, 'pack', 'the same pack, not the bigger swarm');
+  const line = JSON.parse(fs.readFileSync(path.join(DIR, 'picks.jsonl'), 'utf8').trim().split('\n').at(-1)!);
+  assert.deepEqual([line.via, line.videoId, line.chosen, line.auto, line.target], ['auto-next', 'tt5:1:2', 'pack:1', 'best:0', 'chromecast']);
+  assert.ok(line.sources.every((x: Source) => typeof x.seeders === 'number'), 'with the seeders it was ranked on');
+});
+
 test('seeks and subtitle shifts reuse the cast\'s subtitle list until the file completes', { timeout: 5000 }, async () => {
   const en: SubtitleTrack = { id: 'en1', lang: 'eng', label: 'English 1', origin: 'addon', url: '/api/subs/file/en1.vtt', available: true };
   let lookups = 0; let progress = 0.4;
