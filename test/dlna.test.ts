@@ -14,6 +14,8 @@ import { api as castRoutes } from '../server/routes/cast.ts';
 import { jsonErrors, statusOf, publicMessage } from '../server/errors.ts';
 import { ensureDirs, DATA_DIR } from '../server/config.ts';
 import { encodeSubId, decodeSubId, type SubKey } from '../server/subs/ids.ts';
+import * as upnext from '../server/cast/upnext.ts';
+import { getProgress, saveProgress } from '../server/store.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -66,16 +68,25 @@ test('Wake-on-LAN: MAC from arp, magic packet, broadcast addresses', () => {
   assert.deepEqual(broadcasts({ en0: [iface('192.168.1.144', '255.255.255.0')], utun4: [iface('100.101.102.103', '255.255.255.255')], lo0: [iface('127.0.0.1', '255.0.0.0', true)] }), ['255.255.255.255', '192.168.1.255']);
 });
 
+// No test asks the real ARP table for a MAC: every fake TV is found with none, and a test that needs one sets it.
+io.arp = async () => '';
+
 let tvs = 0;
+/** What a fake TV reports it plays: transport state, position and length (UPnP H:MM:SS), and the URI it was handed. */
+interface Playing { state: string; rel: string; dur: string; uri?: string }
 /**
  * A UPnP renderer on loopback, found by dlna.ts as SSDP would find it. It answers every AVTransport action it is not
- * told to fail, playing at 0:12:34, and notes each one (`calls`, with its body in `bodies`). `hold(action)` keeps that
- * action waiting from then on until `release(action)`, so a test can act while the TV is busy loading. `off()` turns it
- * off as Kino knows it then: gone from the network and from what SSDP found, remembered with a MAC to wake it by.
+ * told to fail, reporting `playing` (PLAYING at 0:12:34 of 1:00:00 to begin with; a test changes it to have the TV
+ * finish, or play a file of Kino's it was not handed now), and notes each one (`calls`, with its body in `bodies`).
+ * `failing` fails an action until removed, `failNext(action)` once. `hold(action)` keeps that action waiting from then
+ * on until `release(action)`, so a test can act while the TV is busy loading. `off()` turns it off as Kino knows it
+ * then: gone from the network and from what SSDP found, remembered with a MAC to wake it by. `sleep()` turns it off
+ * without Kino noticing.
  */
 async function fakeTv() {
   const id = `test-tv-${++tvs}`, name = `Test TV ${tvs}`;
-  const calls: string[] = []; const bodies: string[] = []; const failing = new Set<string>();
+  const calls: string[] = []; const bodies: string[] = []; const failing = new Set<string>(); const once = new Set<string>();
+  const playing: Playing = { state: 'PLAYING', rel: '0:12:34', dur: '1:00:00' };
   const holding = new Set<string>(); const held = new Map<string, (() => void)[]>();
   let power = true;
   const srv = http.createServer((req, res) => {
@@ -85,8 +96,10 @@ async function fakeTv() {
     req.setEncoding('utf8').on('data', (x: string) => { body += x; }).on('end', () => {
       const action = String(req.headers.soapaction).replace(/^"[^#]*#|"$/g, ''); calls.push(action); bodies.push(body);
       const answer = () => {
-        if (failing.has(action)) { res.statusCode = 500; res.end('<errorCode>701</errorCode><errorDescription>Transition not available</errorDescription>'); return; }
-        res.end(action === 'GetTransportInfo' ? '<CurrentTransportState>PLAYING</CurrentTransportState>' : action === 'GetPositionInfo' ? '<RelTime>0:12:34</RelTime><TrackDuration>1:00:00</TrackDuration>' : '<ok/>');
+        if (failing.has(action) || once.delete(action)) { res.statusCode = 500; res.end('<errorCode>701</errorCode><errorDescription>Transition not available</errorDescription>'); return; }
+        res.end(action === 'GetTransportInfo' ? `<CurrentTransportState>${playing.state}</CurrentTransportState>`
+          : action === 'GetPositionInfo' ? `<RelTime>${playing.rel}</RelTime><TrackDuration>${playing.dur}</TrackDuration>`
+            : action === 'GetMediaInfo' ? `<CurrentURI>${playing.uri ?? ''}</CurrentURI><MediaDuration>${playing.dur}</MediaDuration>` : '<ok/>');
       };
       if (holding.has(action)) held.set(action, [...(held.get(action) || []), answer]); else answer();
     });
@@ -95,7 +108,8 @@ async function fakeTv() {
   const port = (srv.address() as AddressInfo).port;
   await d.describe(`http://127.0.0.1:${port}/desc.xml`, '127.0.0.1');
   return {
-    id: `dlna:${id}`, name, calls, bodies, failing,
+    id: `dlna:${id}`, name, calls, bodies, failing, playing,
+    failNext: (action: string) => { once.add(action); },
     hold: (action: string) => { holding.add(action); },
     release: (action: string) => { holding.delete(action); for (const answer of held.get(action) || []) answer(); held.delete(action); },
     /** How many `action` calls are waiting on a hold. */
@@ -621,4 +635,86 @@ test('unwatched, a cast to a TV that went off since it was last asked checks it 
   tv.sleep();
   const s = await castTo(film(tv.id));
   assert.deepEqual([s.active, wakes], [true, ['02:00:00:00:00:01']]);
+});
+
+// ---- the fake TV through a whole cast: a refused subtitle, taking one back, the end, up next ----
+const subTrack = (id: string, lang: string): SubtitleTrack => ({ id, lang, label: lang, origin: 'addon', url: `/api/subs/file/${id}.vtt`, available: true });
+
+test('a subtitle reload the TV refuses once: the previous subtitle is loaded again at the same place, and the status says so', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.now() });
+  const tv = await fakeTv();
+  t.after(async () => { await stop(false); await tv.close(); });
+  fakeIo(t, { subtitles: async () => [subTrack('en1', 'eng'), subTrack('fr1', 'fre')] });
+  const videoId = 'tt7:1:1';
+  saveProgress({ videoId, metaId: 'tt7', type: 'series', pos: 600, dur: 3600, updatedAt: Date.now(), name: 'Show', season: 1, episode: 1 });
+  await castTo({ ...film(tv.id), videoId, subId: 'en1', subOffsetMs: 200 });
+  t.mock.timers.tick(2000);
+  await until(() => status().currentTime === 754, 'a poll');
+  tv.calls.length = 0; tv.bodies.length = 0;
+  tv.failNext('SetAVTransportURI');
+  await assert.rejects(setSubtitle('fr1', 900), { status: 502 });
+  assert.deepEqual(tv.calls.filter((a) => a !== 'GetTransportInfo'), ['Stop', 'SetAVTransportURI', 'Stop', 'SetAVTransportURI', 'Play', 'Seek']);
+  const uris = tv.bodies.filter((b) => b.includes('SetAVTransportURI'));
+  assert.match(uris[0], /fr1\.srt\?offset=900/);
+  assert.match(uris[1], /en1\.srt\?offset=200/, 'the one before, with its offset');
+  assert.match(tv.bodies.find((b) => b.includes('<u:Seek'))!, /<Target>00:12:34<\/Target>/, 'at the same place');
+  assert.deepEqual([status().activeSubId, status().subOffsetMs], ['en1', 200]);
+  assert.deepEqual([getProgress(videoId)?.subId, getProgress(videoId)?.subOffsetMs], ['en1', 200], 'the saved choice too');
+});
+
+test('a file of Kino\'s playing on a TV that Kino lost track of is taken back, with what was asked for it', async (t) => {
+  const tv = await fakeTv();
+  t.after(async () => { await stop(false); await tv.close(); });
+  fakeIo(t);
+  await castTo({ ...film(tv.id), title: 'Asked title' });
+  d.asked.set(`${'a'.repeat(40)}:0`, { ...d.asked.get(`${'a'.repeat(40)}:0`)!, at: Date.now() });
+  await stop(false);   // Kino forgets it; the TV plays on
+  tv.playing.uri = `http://192.168.1.144:1234/api/file/${'a'.repeat(40)}/0`;
+  io.watchers = () => 1;
+  // Past the quiet time after Kino's own stops, this test's and those of tests before that stepped a mocked clock on.
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() + HOUR });
+  await d.observe();
+  const s = status();
+  assert.deepEqual([s.active, s.deviceId, s.title, s.currentTime, s.state], [true, tv.id, 'Asked title', 754, 'PLAYING']);
+});
+
+test('a TV that stops near the end: the session ends as finished, with what the next episode needs', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.now() });
+  const tv = await fakeTv();
+  t.after(async () => { await stop(false); await tv.close(); });
+  fakeIo(t, { subtitles: async () => [subTrack('en1', 'eng')] });
+  const finished: unknown[] = [];
+  const { events } = await import('../server/cast/dlna.ts');
+  const on = (i: unknown) => finished.push(i);
+  events.on('finished', on); t.after(() => { events.off('finished', on); });
+  await castTo({ ...film(tv.id), videoId: 'tt5:1:1', subId: 'en1' });
+  t.mock.timers.tick(2000);
+  await until(() => status().state === 'PLAYING', 'playing');
+  t.mock.timers.tick(16_000);
+  Object.assign(tv.playing, { state: 'STOPPED', rel: '0:59:00' });
+  await until(() => { if (!finished.length) t.mock.timers.tick(2000); return finished.length > 0; }, 'the end');
+  assert.deepEqual(finished, [{ videoId: 'tt5:1:1', deviceId: tv.id, subLang: 'eng', subOffsetMs: 0 }]);
+  assert.equal(status().active, false);
+});
+
+test('up next on a DLNA TV: past the credits the popup shows, and the countdown plays the next episode', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.now() });
+  const cast = await import('../server/cast/manager.ts');
+  const tv = await fakeTv();
+  t.after(async () => { upnext._reset(null); await stop(false); await tv.close(); });
+  fakeIo(t);
+  await castTo({ ...film(tv.id), videoId: 'tt5:1:1' });
+  t.mock.timers.tick(2000);
+  await until(() => status().currentTime === 754 && status().state === 'PLAYING', 'a poll');
+  let nexts = 0;
+  const deps: upnext.Deps = {
+    status: cast.status, publish: () => undefined, castNext: async () => { nexts++; },
+    settings: () => ({ autoNext: true, autoNextDelaySec: 5 }),
+    plan: async () => ({ next: { id: 'tt5:1:2', season: 1, episode: 2 } as upnext.Plan['next'], show: 'Show', creditsAt: 700, confidence: 'high' }),
+  };
+  upnext._reset(deps);
+  let now = Date.now(), shown = false;
+  await until(() => { upnext.tick(now += 1000, deps); shown ||= cast.status().upNext?.videoId === 'tt5:1:2'; return nexts > 0; }, 'the next episode');
+  assert.ok(shown, 'the popup showed the next episode');
+  assert.equal(nexts, 1);
 });

@@ -148,12 +148,11 @@ export function macFromArp(out: string): string | undefined {
   const m = out.match(/\bat\s+([0-9a-f]{1,2}(?::[0-9a-f]{1,2}){5})\b/i);
   return m ? m[1].split(':').map((x) => x.padStart(2, '0')).join(':').toLowerCase() : undefined;
 }
-function learnMac(id: string, host: string): Promise<void> {
-  return new Promise((resolve) => execFile('arp', ['-n', host], { timeout: 3000 }, (_e, out) => {
-    const mac = macFromArp(String(out || '')); const k = known.get(id);
-    if (mac && k && k.mac !== mac) { k.mac = mac; saveKnown(); log.info('renderer can be woken', { name: k.name, mac }); }
-    resolve();
-  }));
+/** `arp -n host`'s output, empty when it fails. */
+const arp = (host: string): Promise<string> => new Promise((resolve) => execFile('arp', ['-n', host], { timeout: 3000 }, (_e, out) => resolve(String(out || ''))));
+async function learnMac(id: string, host: string): Promise<void> {
+  const mac = macFromArp(await io.arp(host)); const k = known.get(id);
+  if (mac && k && k.mac !== mac) { k.mac = mac; saveKnown(); log.info('renderer can be woken', { name: k.name, mac }); }
 }
 /** Wake-on-LAN: six 0xFF bytes, then the MAC sixteen times. */
 export function magicPacket(mac: string): Buffer {
@@ -274,6 +273,8 @@ export const io = {
   },
   probe,
   subtitles: listSubtitles,
+  /** The ARP table's line for a host: where a renderer's MAC comes from, to wake it by. */
+  arp,
   /** Wake-on-LAN, to every LAN broadcast address. */
   wake: sendWake,
   /** Turn an LG TV off over its own remote protocol (lg.ts). */
@@ -358,6 +359,8 @@ interface Cur {
   dev: Renderer; req: CastPlayRequest; infoHash: string; fileIdx: number; fileName: string; duration: number; type: MediaType;
   tracks: SubtitleTrack[]; activeSubId?: string; subOffsetMs: number;
   state: CastStatus['state']; pos: number; volume: number; muted: boolean; lastSave: number; started: number; sawPlaying: boolean; poll?: NodeJS.Timeout; polling?: boolean;
+  /** The subtitle and offset the TV last loaded: what a failed subtitle reload goes back to. */
+  onTv: { subId?: string; offsetMs: number };
   /** When `pos` was sampled (ms), 0 while it stands still (a reload): positionNow() moves it on by the time since. */
   posAt: number;
   /** Loads of this session begun so far, and the newest one's end: a newer load waits for it, see reload(). */
@@ -527,7 +530,7 @@ function adopt(dev: Renderer, f: { infoHash: string; fileIdx: number }, s: Seen)
   const req: CastPlayRequest = a ? { ...a.req, deviceId: dev.id } : { deviceId: dev.id, infoHash: f.infoHash, fileIdx: f.fileIdx, videoId: p?.videoId, title: p?.name || s.title || 'Kino', poster: p?.poster };
   const c: Cur = {
     dev, req, infoHash: f.infoHash, fileIdx: f.fileIdx, fileName: a?.fileName || s.title || '', duration: a?.duration || s.dur, type: a?.type || p?.type || 'movie',
-    tracks: a?.tracks || [], activeSubId: a?.activeSubId, subOffsetMs: a?.subOffsetMs || 0,
+    tracks: a?.tracks || [], activeSubId: a?.activeSubId, subOffsetMs: a?.subOffsetMs || 0, onTv: { subId: a?.activeSubId, offsetMs: a?.subOffsetMs || 0 },
     state: s.state, pos: s.pos, posAt: Date.now(), volume: 0, muted: false, lastSave: 0, started: Date.now() - 20_000, sawPlaying: s.state === 'PLAYING',
   };
   cur = c;
@@ -587,6 +590,7 @@ function didl(c: Cur, url: string, mime: string, sub?: { url: string }): string 
  * session was stopped or replaced, or a newer load of it began): a stale load never presses Play over a newer one.
  */
 async function load(c: Cur, startTime: number, still: () => boolean): Promise<boolean> {
+  const sent = { subId: c.activeSubId, offsetMs: c.subOffsetMs };
   const url = `${base()}/api/file/${c.infoHash}/${c.fileIdx}`;
   const mime = mimeFor(c.fileName);
   const sub = c.activeSubId ? c.tracks.find((t) => t.id === c.activeSubId) : undefined;
@@ -608,7 +612,9 @@ async function load(c: Cur, startTime: number, still: () => boolean): Promise<bo
       if (st === 'STOPPED' && i > 6) break;
     }
   }
-  return still();
+  if (!still()) return false;
+  c.onTv = sent;
+  return true;
 }
 
 /** A ticket for one load of c: true while c is the session and no newer load of it has begun. */
@@ -713,7 +719,7 @@ async function castFile(req: CastPlayRequest, opts: CastOpts, signal: AbortSigna
   hush();
   if (cur) await stop(false);
   if (gone()) return status();
-  const c: Cur = { dev, req, infoHash: t.infoHash, fileIdx: idx, fileName: t.files[idx].name, duration, type, tracks, activeSubId, subOffsetMs: req.subOffsetMs ?? saved?.subOffsetMs ?? 0, state: 'BUFFERING', pos: req.startTime || 0, posAt: 0, volume: 0, muted: false, lastSave: 0, started: Date.now(), sawPlaying: false };
+  const c: Cur = { dev, req, infoHash: t.infoHash, fileIdx: idx, fileName: t.files[idx].name, duration, type, tracks, activeSubId, subOffsetMs: req.subOffsetMs ?? saved?.subOffsetMs ?? 0, onTv: { subId: activeSubId, offsetMs: req.subOffsetMs ?? saved?.subOffsetMs ?? 0 }, state: 'BUFFERING', pos: req.startTime || 0, posAt: 0, volume: 0, muted: false, lastSave: 0, started: Date.now(), sawPlaying: false };
   cur = c;
   remember(`${c.infoHash}:${c.fileIdx}`, { req, duration, type, tracks, activeSubId, subOffsetMs: c.subOffsetMs, fileName: c.fileName, at: Date.now() });
   publish();
@@ -755,15 +761,26 @@ export async function setSubtitle(subId: string | null, offsetMs?: number): Prom
   const c = cur; if (!c) return;
   // From where it is now, not at the last poll up to 2 s ago; held there while it reloads, so a second change in a row starts there too.
   c.pos = positionNow(c.pos, c.posAt, c.state === 'PLAYING'); c.posAt = 0;
-  c.activeSubId = subId && c.tracks.some((t) => t.id === subId) ? subId : undefined;
-  if (offsetMs != null) c.subOffsetMs = offsetMs;
-  if (c.req.videoId) saveSubChoice(c.req.videoId, { subId: c.activeSubId ?? null, subLang: c.tracks.find((t) => t.id === c.activeSubId)?.lang, subOffsetMs: c.subOffsetMs });
+  const choose = (id: string | undefined, off: number) => {
+    c.activeSubId = id; c.subOffsetMs = off;
+    if (c.req.videoId) saveSubChoice(c.req.videoId, { subId: id ?? null, subLang: c.tracks.find((t) => t.id === id)?.lang, subOffsetMs: off });
+  };
+  choose(subId && c.tracks.some((t) => t.id === subId) ? subId : undefined, offsetMs ?? c.subOffsetMs);
   if (c.poll) clearInterval(c.poll);   // the TV reports STOPPED while it reloads: that is no end of the film
   c.poll = undefined;
   const still = ticket(c);
   let done = false;
   // The poll comes back even when the reload throws: without it the session goes dead (no position, no up next).
-  try { done = await reload(c, () => c.pos, still); } finally { if (still()) arm(c); }
+  try { done = await reload(c, () => c.pos, still); }
+  catch (e) {
+    // The TV is stopped now: back to what it showed, at the same place, so it plays on and the status says what it shows.
+    log.warn('subtitle reload refused, back to the one before', { device: c.dev.name, err: detailOf(e) });
+    const prev = c.onTv;
+    choose(prev.subId, prev.offsetMs);
+    publish();
+    try { if (await reload(c, () => c.pos, still)) publish(); } catch (err) { log.warn('reloading the subtitle before failed too', { device: c.dev.name, err: detailOf(err) }); }
+    throw e;
+  } finally { if (still()) arm(c); }
   if (done) publish();
 }
 export async function stop(haNotify = true, reason = 'stopped'): Promise<void> {
