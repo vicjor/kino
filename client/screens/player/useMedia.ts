@@ -194,6 +194,8 @@ export function useStallWatch(a: StallArgs) {
     return () => window.clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buffering, phase, err, stall, play]);
+  // Playback came back by itself: the sheet's question is answered, so it goes.
+  useEffect(() => { if (stall && playing && !buffering) setStall(null); }, [stall, playing, buffering]);
   // Soft nudge well before the stall sheet: three rebuffers in two minutes, or a
   // download that cannot keep up with the file's bitrate while we are playing.
   useEffect(() => {
