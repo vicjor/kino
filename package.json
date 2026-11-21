@@ -124,6 +124,7 @@
           ]
         }
       ],
+      "electronLanguages": ["en"],
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "desktop/entitlements.mac.plist",

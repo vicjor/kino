@@ -36,7 +36,13 @@ bun run build
 if [ "$mode" = dist ]; then
   # The DMG packs its own ffmpeg from vendor/ffmpeg (scripts/ffmpeg-dmg.sh).
   sh scripts/ffmpeg-dmg.sh
-  exec electron-builder --mac dmg --arm64 --publish never
+  # Signed with the Developer ID in the keychain when there is one (notarized too with APPLE_KEYCHAIN_PROFILE or the
+  # APPLE_API_* variables set). Without one, ad-hoc signed: it runs on this Mac, and a copy elsewhere needs Open Anyway.
+  if security find-identity -v -p codesigning 2>/dev/null | grep -q 'Developer ID Application'; then
+    exec electron-builder --mac dmg --arm64 --publish never
+  fi
+  echo "desktop: no Developer ID in the keychain, so the app is ad-hoc signed and not notarized"
+  exec electron-builder --mac dmg --arm64 --publish never -c.mac.identity=- -c.mac.notarize=false
 fi
 
 if [ -n "$worktree" ]; then

@@ -19,9 +19,7 @@ jobs:
   desktop:
     strategy:
       matrix:
-        # macos-15, not macos-latest: electron-builder 26.15's signing keychain fails to unlock on the macos-latest
-        # image ("SecKeychainUnlock: The user name or passphrase you entered is not correct"). Both are arm64.
-        # Ubuntu pinned: an AppImage runs only on systems with at least the glibc it was built against, so the
+        # macos-15 pinned (arm64) so a new runner image cannot break signing between releases. Ubuntu pinned: an AppImage runs only on systems with at least the glibc it was built against, so the
         # oldest supported runner reaches the most Linux installs. ubuntu-latest moves to newer releases on its own.
         os: [macos-15, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
@@ -41,20 +39,48 @@ jobs:
         run: |
           echo "$APPLE_API_KEY_B64" | base64 -D > "$RUNNER_TEMP/AuthKey.p8"
           echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+      # The certificate goes into a keychain of our own (electron-builder's CSC_LINK keychain fails to unlock on newer
+      # runner images), which also signs the recompressed DMG below.
+      - if: runner.os == 'macOS'
+        name: Import the signing certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          KC=$RUNNER_TEMP/sign.keychain-db; PW=$(openssl rand -hex 16)
+          echo "$MACOS_CERTIFICATE" | base64 -D > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$PW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$PW" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PW" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC"
+          rm "$RUNNER_TEMP/cert.p12"
+          echo "CSC_KEYCHAIN=$KC" >> "$GITHUB_ENV"
+          echo "SIGN_ID=$(security find-identity -v -p codesigning "$KC" | awk '/Developer ID Application/ { print $2; exit }')" >> "$GITHUB_ENV"
       # Apple Silicon only (the runner is arm64, so bun install fetched arm64 native modules), with its ffmpeg in
-      # vendor/ffmpeg (scripts/ffmpeg-dmg.sh). electron-builder reads CSC_* and APPLE_* from the environment, signs
-      # every binary in the app (ffmpeg and the native modules included) and notarizes and staples the app.
+      # vendor/ffmpeg (scripts/ffmpeg-dmg.sh). electron-builder finds the identity in that keychain, signs every binary
+      # in the app (ffmpeg and the native modules included) and notarizes and staples the app.
       - if: runner.os == 'macOS'
         name: Build, sign and notarize the app
         env:
-          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
-          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           sh scripts/ffmpeg-dmg.sh
           bunx electron-builder --mac dmg --arm64 --publish never
+      # LZMA makes the download about a quarter smaller than electron-builder's zlib DMG (216 MB to 165 MB for 0.1.2).
+      # Converting drops the DMG's signature, so it is signed again. Needs macOS 10.15 to open; the app needs 11.
+      - if: runner.os == 'macOS'
+        name: Recompress the DMG with LZMA and sign it
+        run: |
+          for f in release/Kino-*.dmg; do
+            hdiutil convert -quiet "$f" -format ULMO -o "$f.lzma.dmg"
+            mv "$f.lzma.dmg" "$f"
+            codesign --force --sign "$SIGN_ID" --keychain "$CSC_KEYCHAIN" --timestamp "$f"
+          done
+          ls -l release/*.dmg
       # The app is notarized before it goes into the DMG, so the DMG itself carries no ticket and Gatekeeper cannot
       # assess the download offline. Notarize and staple the DMG too.
       - if: runner.os == 'macOS'
