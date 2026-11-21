@@ -29,6 +29,11 @@ fs.writeFileSync(path.join(BIN, 'electron-builder'), `#!/bin/sh
 echo "electron-builder $* | ff=$(cat vendor/ffmpeg/ffmpeg 2>/dev/null)"
 [ -z "$FAIL_BUILD" ]
 `, { mode: 0o755 });
+// security find-identity with a Developer ID in the keychain only under FAKE_IDENTITY, whatever this machine has.
+fs.writeFileSync(path.join(BIN, 'security'), `#!/bin/sh
+[ -n "$FAKE_IDENTITY" ] && echo '  1) 0123456789ABCDEF "Developer ID Application: Test (TEAMID)"'
+echo "     $([ -n "$FAKE_IDENTITY" ] && echo 1 || echo 0) valid identities found"
+`, { mode: 0o755 });
 // uname -m as an Apple Silicon Mac answers it, or FAKE_CPU: the tests run on Intel and Linux too.
 fs.writeFileSync(path.join(BIN, 'uname'), '#!/bin/sh\necho "${FAKE_CPU:-arm64}"\n', { mode: 0o755 });
 // scripts/ffmpeg-dmg.sh, stubbed: says so, and puts a marker where the real one unpacks its build.
@@ -78,7 +83,7 @@ test('desktop.sh: DEPLOY=1 builds and runs in the checkout launchd serves anyway
   assert.match(r.out, /^electron \. \|/m);
 });
 
-test('desktop.sh dist: refuses a symlinked node_modules or an Intel Mac, then packs the arm64 DMG after fetching its ffmpeg', () => {
+test('desktop.sh dist: refuses a symlinked node_modules or an Intel Mac, then packs the arm64 DMG after fetching its ffmpeg, signed with a Developer ID when the keychain has one and ad-hoc otherwise', () => {
   fs.mkdirSync(path.join(TMP, 'borrowed'));
   fs.symlinkSync(path.join(TMP, 'borrowed'), path.join(WT, 'node_modules'));
   const refused = run(WT, 'dist');
@@ -94,14 +99,21 @@ test('desktop.sh dist: refuses a symlinked node_modules or an Intel Mac, then pa
   assert.match(intel.out, /Refusing: the DMG is for Apple Silicon/);
   assert.doesNotMatch(intel.out, /bun run build \|/);
 
+  const steps = (out: string) => out.split('\n').filter((l) => /^(bun |ffmpeg-dmg$|electron-builder |electron )/.test(l)).map((l) => l.replace(/^bun run build \|.*/, 'bun run build'));
+  // No Developer ID: build first, then its ffmpeg, then the DMG, ad-hoc signed and not notarized. `dmg` named: without a
+  // target, electron-builder builds every arch in mac.target.
   const r = run(WT, 'dist');
   assert.equal(r.code, 0, r.out);
-  // Build first, then its ffmpeg, then the DMG. `dmg` named: without a target, electron-builder builds every arch in mac.target.
-  assert.deepEqual(r.out.split('\n').filter((l) => /^(bun |ffmpeg-dmg$|electron-builder |electron )/.test(l)).map((l) => l.replace(/^bun run build \|.*/, 'bun run build')), [
+  assert.deepEqual(steps(r.out), [
     'bun run build',
     'ffmpeg-dmg',
-    'electron-builder --mac dmg --arm64 --publish never | ff=fake',
+    'electron-builder --mac dmg --arm64 --publish never -c.mac.identity=- -c.mac.notarize=false | ff=fake',
   ], 'and no electron app started');
+  assert.match(r.out, /no Developer ID in the keychain, so the app is ad-hoc signed/);
+  // A Developer ID: package.json's signing (and notarizing, given credentials) as it is.
+  const signed = run(WT, 'dist', { FAKE_IDENTITY: '1' });
+  assert.equal(signed.code, 0, signed.out);
+  assert.deepEqual(steps(signed.out).at(-1), 'electron-builder --mac dmg --arm64 --publish never | ff=fake');
   assert.equal(run(WT, 'dist', { FAIL_BUILD: '1' }).code, 1, 'a failed build fails the script');
   fs.rmSync(path.join(WT, 'node_modules'), { recursive: true });
   fs.rmSync(path.join(WT, 'vendor'), { recursive: true });
