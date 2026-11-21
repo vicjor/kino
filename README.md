@@ -37,12 +37,11 @@ Kino is a desktop app for macOS. It runs the server for the whole house and give
 
 **Download it** (once a version is published). The [Releases page](https://github.com/vicjor/kino/releases) has a DMG for Apple Silicon Macs and an AppImage for Linux for each version. Intel Macs are not supported by the app (the server still runs there from a checkout). The app is not signed with an Apple Developer ID, so macOS refuses the first open: in **System Settings, Privacy & Security**, choose **Open Anyway** next to the message about Kino (or run `xattr -dr com.apple.quarantine /Applications/Kino.app`).
 
-**Or build it yourself.** You need git and [mise](https://mise.jdx.dev), which installs the Node and bun versions pinned in `mise.toml`:
+**Or build it yourself.** You need git, Node 26 and [bun](https://bun.sh): `brew install node bun`, or `mise install` in the checkout (versions are pinned in `mise.toml`).
 
 ```sh
 git clone https://github.com/vicjor/kino.git
 cd kino
-mise install            # Node 26 and bun
 bun install             # dependencies
 bun run desktop:dist    # release/Kino-<version>-arm64.dmg (on an Apple Silicon Mac)
 open release
@@ -123,14 +122,13 @@ For an always-on home server (a Mac mini in a cupboard, a Linux box, a NAS), run
 
 ### macOS: a service that starts at login
 
-Requirements: [mise](https://mise.jdx.dev) (or Node 26 and [bun](https://bun.sh) installed yourself; versions are pinned in `mise.toml`).
-
 ```sh
 git clone https://github.com/vicjor/kino.git
 cd kino
-mise install            # Node 26 and bun
 ./scripts/install.sh    # dependencies, build, a launchd agent with your paths, opens Kino in the browser
 ```
+
+It needs Node 26 and [bun](https://bun.sh) and offers to install whichever is missing with [Homebrew](https://brew.sh). Installed some other way (nodejs.org, [mise](https://mise.jdx.dev) with the versions pinned in `mise.toml`, nvm) works too: anything on `PATH`.
 
 ffmpeg and ffprobe come in as npm packages at install time. At boot Kino checks that each one actually runs and otherwise uses Homebrew's (`/opt/homebrew/bin`, `/usr/local/bin`), MacPorts' (`/opt/local/bin`) or the one on `PATH`. The ffprobe package's Apple Silicon binary is an Intel build, so a Mac without Rosetta needs `brew install ffmpeg`.
 

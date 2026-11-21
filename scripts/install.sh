@@ -1,6 +1,7 @@
 #!/bin/sh
 # One-shot install on a Mac: build, write a launchd agent with the real paths,
-# start it, open the app. Needs Node 26 and bun (`mise install`). Re-run after `git pull`
+# start it, open the app. Needs Node 26 and bun from anywhere on PATH (Homebrew, mise, nvm);
+# offers to install the missing ones with Homebrew. Re-run after `git pull`
 # to update, or use `make deploy-safe`, which waits until nobody is watching.
 #   PORT=1234 KINO_DATA=~/kino-data ./scripts/install.sh
 # Refuses while someone is watching (it restarts Kino); FORCE=1 goes ahead anyway.
@@ -8,12 +9,31 @@ set -e
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 PORT=${PORT:-1234}
 DATA=${KINO_DATA:-$HOME/kino-data}
-NODE=$(command -v node || true)
-if [ -z "$NODE" ]; then echo "Node.js 26 or newer is required. Not found on PATH. With mise: mise install (versions are pinned in mise.toml)."; exit 1; fi
-MAJOR=$("$NODE" -p 'process.versions.node.split(".")[0]')
-if [ "$MAJOR" -lt 26 ]; then echo "Node $MAJOR found, need 26 or newer. With mise: mise install (versions are pinned in mise.toml)."; exit 1; fi
-if ! command -v bun >/dev/null 2>&1; then echo "bun is required to install and build Kino. Not found on PATH. With mise: mise install, or see https://bun.sh."; exit 1; fi
 case "$(uname -s)" in Darwin) ;; *) echo "This installer is for macOS. On Linux use ops/kino.service (systemd)."; exit 1;; esac
+
+# Node 26+ and bun. Homebrew formula names: node, bun.
+node_major() { node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0; }
+missing() {
+  m=
+  if ! command -v node >/dev/null 2>&1 || [ "$(node_major)" -lt 26 ]; then m=node; fi
+  command -v bun >/dev/null 2>&1 || m="${m:+$m }bun"
+  echo "$m"
+}
+NEED=$(missing)
+if [ -n "$NEED" ] && [ -t 0 ] && command -v brew >/dev/null 2>&1; then
+  printf 'Kino needs Node.js 26 or newer and bun. Install %s with Homebrew now? [Y/n] ' "$NEED"
+  read -r ANSWER || ANSWER=n
+  case $ANSWER in [nN]*) ;; *) brew install $NEED; hash -r; NEED=$(missing) ;; esac
+fi
+case " $NEED " in *" node "*)
+  if command -v node >/dev/null 2>&1; then echo "Node $(node_major) found at $(command -v node), need 26 or newer."; else echo "Node.js 26 or newer is required. Not found on PATH."; fi
+  echo "Install it with Homebrew (brew install node), from https://nodejs.org, or with mise (mise install)."; exit 1 ;;
+esac
+case " $NEED " in *" bun "*)
+  echo "bun is required to install and build Kino. Not found on PATH."
+  echo "Install it with Homebrew (brew install bun), from https://bun.sh, or with mise (mise install)."; exit 1 ;;
+esac
+NODE=$(command -v node)
 
 # Installing restarts Kino, which stops every stream, video being converted and cast. Refuse while someone is watching.
 PLIST="$HOME/Library/LaunchAgents/com.kino.plist"
