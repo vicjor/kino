@@ -1,6 +1,6 @@
 {
   "name": "kino",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "type": "module",
   "description": "Self-hosted media player for the home network: browse, play on any device, cast to Chromecast and DLNA TVs.",
