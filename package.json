@@ -91,6 +91,7 @@
     "files": [
       "dist/**",
       "desktop/**",
+      "!desktop/entitlements.mac.plist",
       "package.json",
       "!dist/**/*.map"
     ],
@@ -123,8 +124,17 @@
           ]
         }
       ],
-      "hardenedRuntime": false,
-      "identity": "-"
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "desktop/entitlements.mac.plist",
+      "entitlementsInherit": "desktop/entitlements.mac.plist",
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "Kino finds the TVs on your network and plays video on your phones, laptops and TVs."
+      },
+      "notarize": true
+    },
+    "dmg": {
+      "sign": true
     },
     "linux": {
       "files": [

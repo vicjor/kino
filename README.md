@@ -35,7 +35,7 @@ Kino is a desktop app for macOS. It runs the server for the whole house and give
 
 ### 1. Get the app
 
-**Download it** (once a version is published). The [Releases page](https://github.com/vicjor/kino/releases) has a DMG for Apple Silicon Macs and an AppImage for Linux for each version. Intel Macs are not supported by the app (the server still runs there from a checkout). The app is not signed with an Apple Developer ID, so macOS refuses the first open: in **System Settings, Privacy & Security**, choose **Open Anyway** next to the message about Kino (or run `xattr -dr com.apple.quarantine /Applications/Kino.app`).
+**Download it** (once a version is published). The [Releases page](https://github.com/vicjor/kino/releases) has a DMG for Apple Silicon Macs and an AppImage for Linux for each version. Intel Macs are not supported by the app (the server still runs there from a checkout). The Mac app is signed with a Developer ID and notarized by Apple from version 0.1.3. Older versions are not, so macOS refuses their first open: in **System Settings, Privacy & Security**, choose **Open Anyway** next to the message about Kino.
 
 **Or build it yourself.** You need git, Node 26 and [bun](https://bun.sh): `brew install node bun`, or `mise install` in the checkout (versions are pinned in `mise.toml`).
 

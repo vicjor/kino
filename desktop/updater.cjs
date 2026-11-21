@@ -1,5 +1,5 @@
-// Updates from GitHub releases. The app is not signed with an Apple Developer ID, so Electron's autoUpdater (Squirrel,
-// which checks the signature) cannot be used. Instead: read the latest release, offer it, and on yes download the
+// Updates from GitHub releases. Electron's autoUpdater (Squirrel) needs a signed app, which releases before 0.1.3 are
+// not, and a zip feed the releases do not have. Instead: read the latest release, offer it, and on yes download the
 // DMG (or AppImage), check its size and SHA-256, and swap it in. On a Mac the new Kino.app is copied out of the DMG
 // and a detached shell script (update-rules.cjs SWAP_SCRIPT) moves it over the installed one once this app has quit,
 // then opens it. Node downloads carry no quarantine flag, so Gatekeeper does not ask again. Where the app cannot
